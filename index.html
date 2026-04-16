@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>$1 Click Challenge</title>
+  <title>$1 Million Click Challenge</title>
   <style>
     body {
       margin: 0;
       min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
       background: #0f172a;
       color: white;
       font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
 
     .container {
@@ -21,21 +21,45 @@
     }
 
     h1 {
+      font-size: 48px;
       margin-bottom: 20px;
-      font-size: 42px;
     }
 
-    p {
-      font-size: 22px;
-      margin-bottom: 30px;
+    #counter {
+      font-size: 28px;
+      margin-bottom: 40px;
+      font-weight: bold;
     }
 
-    button {
-      padding: 25px 40px;
-      font-size: 24px;
+    #payBtn {
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
       border: none;
-      border-radius: 14px;
+      background: red;
+      color: white;
+      font-size: 26px;
+      font-weight: bold;
       cursor: pointer;
+      box-shadow: 0 12px 30px rgba(255, 0, 0, 0.45);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      padding: 20px;
+      line-height: 1.3;
+    }
+
+    #payBtn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 16px 40px rgba(255, 0, 0, 0.6);
+    }
+
+    #payBtn:active {
+      transform: scale(0.98);
+    }
+
+    .success {
+      margin-top: 25px;
+      font-size: 22px;
+      color: #22c55e;
       font-weight: bold;
     }
   </style>
@@ -44,25 +68,36 @@
   <div class="container">
     <h1>$1 Million Click Challenge</h1>
     <p id="counter">0 / 1,000,000 clicks</p>
-    <button id="payBtn">Pay 1 dollar and click this button</button>
+    <button id="payBtn">PAY $1<br>AND CLICK</button>
+    <div id="message"></div>
   </div>
 
   <script>
     let clicks = Number(localStorage.getItem('clicks')) || 0;
     const maxClicks = 1000000;
     const counter = document.getElementById('counter');
+    const message = document.getElementById('message');
 
     function updateCounter() {
       counter.textContent = `${clicks.toLocaleString()} / 1,000,000 clicks`;
     }
 
-    updateCounter();
+    // conta SOMENTE quando voltou do pagamento com sucesso
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('success') === 'true' && !sessionStorage.getItem('counted')) {
+      if (clicks < maxClicks) {
+        clicks++;
+        localStorage.setItem('clicks', clicks);
+        sessionStorage.setItem('counted', 'yes');
+        updateCounter();
+        message.innerHTML = '<div class="success">✅ Payment confirmed! Your click was counted.</div>';
+      }
+    } else {
+      updateCounter();
+    }
 
     document.getElementById('payBtn').addEventListener('click', async () => {
-      if (clicks >= maxClicks) {
-        alert('1,000,000 clicks reached!');
-        return;
-      }
+      sessionStorage.removeItem('counted');
 
       try {
         const response = await fetch('https://stripe-click-backend.onrender.com/create-checkout-session', {
@@ -72,11 +107,6 @@
         });
 
         const data = await response.json();
-
-        clicks++;
-        localStorage.setItem('clicks', clicks);
-        updateCounter();
-
         window.location.href = data.url;
       } catch (error) {
         alert('Erro ao iniciar pagamento');
