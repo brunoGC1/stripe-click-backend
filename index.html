@@ -31,6 +31,13 @@
       font-weight: bold;
     }
 
+    .button-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+
     #payBtn {
       width: 220px;
       height: 220px;
@@ -38,22 +45,32 @@
       border: none;
       background: red;
       color: white;
-      font-size: 26px;
+      font-size: 28px;
       font-weight: bold;
       cursor: pointer;
       box-shadow: 0 12px 30px rgba(255, 0, 0, 0.45);
       transition: transform 0.15s ease, box-shadow 0.15s ease;
-      padding: 20px;
-      line-height: 1.3;
+      position: relative;
     }
 
     #payBtn:hover {
       transform: scale(1.05);
-      box-shadow: 0 16px 40px rgba(255, 0, 0, 0.6);
     }
 
     #payBtn:active {
       transform: scale(0.98);
+    }
+
+    #lock {
+      font-size: 60px;
+      position: absolute;
+      top: 15px;
+      right: 15px;
+    }
+
+    #actionText {
+      font-size: 28px;
+      font-weight: bold;
     }
 
     .success {
@@ -68,36 +85,58 @@
   <div class="container">
     <h1>$1 Million Click Challenge</h1>
     <p id="counter">0 / 1,000,000 clicks</p>
-    <button id="payBtn">PAY $1<br>AND CLICK</button>
+
+    <div class="button-wrapper">
+      <button id="payBtn">
+        <span id="lock">🔒</span>
+      </button>
+      <div id="actionText">Pay here</div>
+    </div>
+
     <div id="message"></div>
   </div>
 
   <script>
     let clicks = Number(localStorage.getItem('clicks')) || 0;
+    let unlocked = false;
     const maxClicks = 1000000;
+
     const counter = document.getElementById('counter');
+    const lock = document.getElementById('lock');
+    const actionText = document.getElementById('actionText');
     const message = document.getElementById('message');
+    const button = document.getElementById('payBtn');
 
     function updateCounter() {
       counter.textContent = `${clicks.toLocaleString()} / 1,000,000 clicks`;
     }
 
-    // conta SOMENTE quando voltou do pagamento com sucesso
+    updateCounter();
+
     const params = new URLSearchParams(window.location.search);
-    if (params.get('success') === 'true' && !sessionStorage.getItem('counted')) {
-      if (clicks < maxClicks) {
-        clicks++;
-        localStorage.setItem('clicks', clicks);
-        sessionStorage.setItem('counted', 'yes');
-        updateCounter();
-        message.innerHTML = '<div class="success">✅ Payment confirmed! Your click was counted.</div>';
-      }
-    } else {
-      updateCounter();
+
+    // voltou do stripe = desbloqueia
+    if (params.get('success') === 'true') {
+      unlocked = true;
+      lock.textContent = '🔓';
+      actionText.textContent = 'Click now';
+      message.innerHTML = '<div class="success">✅ Payment confirmed! Now press the button.</div>';
     }
 
-    document.getElementById('payBtn').addEventListener('click', async () => {
-      sessionStorage.removeItem('counted');
+    button.addEventListener('click', async () => {
+      if (unlocked) {
+        if (clicks < maxClicks) {
+          clicks++;
+          localStorage.setItem('clicks', clicks);
+          updateCounter();
+          unlocked = false;
+          lock.textContent = '🔒';
+          actionText.textContent = 'Pay here';
+          message.innerHTML = '<div class="success">🎉 Your click was counted!</div>';
+          window.history.replaceState({}, document.title, "/");
+        }
+        return;
+      }
 
       try {
         const response = await fetch('https://stripe-click-backend.onrender.com/create-checkout-session', {
