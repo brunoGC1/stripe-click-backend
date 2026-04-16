@@ -5,12 +5,18 @@ require 'pg'
 
 set :bind, '0.0.0.0'
 set :port, ENV.fetch('PORT', 3000)
-set :public_folder, 'public'
 
 Stripe.api_key = ENV['STRIPE_SECRET_KEY']
 
 # =========================
-# DATABASE
+# ROOT ROUTE
+# =========================
+get '/' do
+  send_file File.join(File.dirname(__FILE__), 'index.html')
+end
+
+# =========================
+# DB
 # =========================
 def db
   @db ||= PG.connect(ENV['DATABASE_URL'])
@@ -28,13 +34,6 @@ configure do
   if result[0]["count"].to_i == 0
     db.exec("INSERT INTO clicks (count) VALUES (0)")
   end
-end
-
-# =========================
-# HOME ROUTE (ESSENCIAL!)
-# =========================
-get '/' do
-  send_file File.join(settings.public_folder, 'index.html')
 end
 
 # =========================
@@ -70,7 +69,7 @@ post '/register-click' do
 end
 
 # =========================
-# STRIPE CHECKOUT
+# STRIPE
 # =========================
 post '/create-checkout-session' do
   content_type :json
@@ -78,6 +77,8 @@ post '/create-checkout-session' do
   session = Stripe::Checkout::Session.create(
     mode: 'payment',
     payment_method_types: ['card'],
+    customer_creation: 'if_required',
+
     line_items: [{
       price_data: {
         currency: 'usd',
@@ -88,6 +89,7 @@ post '/create-checkout-session' do
       },
       quantity: 1
     }],
+
     success_url: 'https://stripe-click-backend.onrender.com/',
     cancel_url: 'https://stripe-click-backend.onrender.com/'
   )
