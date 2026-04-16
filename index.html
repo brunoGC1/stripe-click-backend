@@ -8,15 +8,13 @@
 body {
   margin: 0;
   font-family: Arial;
-  background: linear-gradient(135deg, #1d2b64, #f8cdda);
+  background: linear-gradient(135deg, #ff9a9e, #fad0c4);
   height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
 }
 
-/* CARD */
 .card {
   background: white;
   padding: 40px;
@@ -32,49 +30,35 @@ h1 {
 
 .lock {
   font-size: 40px;
-  margin-bottom: 10px;
 }
 
-/* BUTTONS */
-.btn-click {
+button {
   width: 100%;
-  padding: 18px;
-  border: none;
-  border-radius: 12px;
-  font-size: 18px;
-  margin-top: 15px;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.locked {
-  background: #ff3b3b;
-  color: white;
-}
-
-.locked:hover {
-  background: #e60000;
-}
-
-.unlocked {
-  background: #ff3b3b;
-  color: white;
-  font-weight: bold;
-}
-
-.pay-btn {
+  padding: 15px;
   margin-top: 10px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+#clickBtn {
+  background: #ff3b3b;
+  color: white;
+}
+
+#clickBtn.locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#payBtn {
   background: #222;
   color: white;
 }
 
-.pay-btn:hover {
-  background: #000;
-}
-
-/* COUNTER */
 #counter {
-  font-size: 42px;
+  font-size: 40px;
   margin-top: 20px;
 }
 </style>
@@ -84,19 +68,14 @@ h1 {
 
 <div class="card">
 
-  <div id="lockIcon" class="lock">🔒</div>
+  <div class="lock" id="lock">🔒</div>
 
   <h1>Click Challenge</h1>
 
-  <p id="text">Pay 1 dollar to unlock clicking</p>
+  <p id="text">Pay $1 to unlock clicking</p>
 
-  <button id="clickButton" class="btn-click locked">
-    Click is locked
-  </button>
-
-  <button id="payButton" class="btn-click pay-btn">
-    Pay here ($1)
-  </button>
+  <button id="clickBtn" class="locked">Locked</button>
+  <button id="payBtn">Pay here ($1)</button>
 
   <div id="counter">0</div>
 
@@ -105,60 +84,48 @@ h1 {
 <script>
 const API = "https://stripe-click-backend.onrender.com";
 
-const clickBtn = document.getElementById("clickButton");
-const payBtn = document.getElementById("payButton");
-const counter = document.getElementById("counter");
-const lockIcon = document.getElementById("lockIcon");
-const text = document.getElementById("text");
-
 let unlocked = localStorage.getItem("unlocked") === "true";
 
-/* =========================
-   RENDER UI
-========================= */
+const clickBtn = document.getElementById("clickBtn");
+const payBtn = document.getElementById("payBtn");
+const counter = document.getElementById("counter");
+const lock = document.getElementById("lock");
+const text = document.getElementById("text");
+
 function render() {
   if (unlocked) {
-    lockIcon.style.display = "none";
+    lock.style.display = "none";
     text.innerText = "You are unlocked!";
-    clickBtn.innerText = "CLICK ME!";
+    clickBtn.innerText = "CLICK!";
     clickBtn.classList.remove("locked");
-    clickBtn.classList.add("unlocked");
   } else {
-    lockIcon.style.display = "block";
-    text.innerText = "Pay 1 dollar to unlock clicking";
-    clickBtn.innerText = "Click is locked";
+    lock.style.display = "block";
+    text.innerText = "Pay $1 to unlock clicking";
+    clickBtn.innerText = "Locked";
     clickBtn.classList.add("locked");
   }
 }
 
 render();
 
-/* =========================
-   LOAD COUNTER
-========================= */
 async function loadCounter() {
   const res = await fetch(API + "/click-count");
   const data = await res.json();
   counter.innerText = data.clicks;
 }
+
 loadCounter();
 
-/* =========================
-   PAY BUTTON
-========================= */
-payBtn.addEventListener("click", async () => {
+payBtn.onclick = async () => {
   const res = await fetch(API + "/create-checkout-session", {
     method: "POST"
   });
 
   const data = await res.json();
   window.location.href = data.url;
-});
+};
 
-/* =========================
-   CLICK BUTTON
-========================= */
-clickBtn.addEventListener("click", async () => {
+clickBtn.onclick = async () => {
   if (!unlocked) return;
 
   const res = await fetch(API + "/register-click", {
@@ -167,16 +134,14 @@ clickBtn.addEventListener("click", async () => {
 
   const data = await res.json();
   counter.innerText = data.clicks;
-});
+};
 
-/* =========================
-   CHECK STRIPE RETURN
-========================= */
 async function checkPayment() {
   const params = new URLSearchParams(window.location.search);
   const sessionId = params.get("session_id");
 
-  if (unlocked) {
+  if (localStorage.getItem("unlocked") === "true") {
+    unlocked = true;
     render();
     return;
   }
