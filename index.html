@@ -8,7 +8,6 @@
       font-family: Arial;
       text-align: center;
       margin-top: 80px;
-      background: #f5f5f5;
     }
 
     .btn {
@@ -20,121 +19,84 @@
       color: white;
       cursor: pointer;
       transition: 0.2s;
-      box-shadow: 0 10px 20px rgba(0,0,0,0.2);
     }
 
     .locked {
-      background: #b00020;
+      background: red;
     }
 
     .unlocked {
-      background: #1e88e5;
-    }
-
-    .btn:active {
-      transform: scale(0.97);
-    }
-
-    .small {
-      margin-top: 20px;
-      font-size: 16px;
-    }
-
-    .pay-btn {
-      margin-top: 20px;
-      padding: 12px 20px;
-      font-size: 16px;
-      cursor: pointer;
+      background: green;
     }
   </style>
 </head>
 
 <body>
 
-  <h1>Click Challenge</h1>
+<h1>Click Challenge</h1>
 
-  <button id="clickBtn" class="btn locked">
-    🔒 Pay $1 to unlock
-  </button>
+<button id="btn" class="btn locked">
+🔒 Pay $1 to unlock
+</button>
 
-  <div class="small">
-    Clicks: <span id="count">0</span>
-  </div>
+<br><br>
 
-  <button class="pay-btn" onclick="pay()">
-    Pay here
-  </button>
+<button onclick="pay()">Pay here</button>
 
-  <script>
-    let paid = false;
+<h3>Clicks: <span id="count">0</span></h3>
 
-    const API = "https://stripe-click-backend.onrender.com";
+<script>
+const API = "https://stripe-click-backend.onrender.com";
 
-    const btn = document.getElementById("clickBtn");
-    const countEl = document.getElementById("count");
+let paid = false;
 
-    // =========================
-    // CHECK PAYMENT STATUS
-    // =========================
-    async function checkStatus() {
-      const res = await fetch(API + "/status");
-      const data = await res.json();
+const btn = document.getElementById("btn");
+const countEl = document.getElementById("count");
 
-      paid = data.paid;
+// STATUS DO PAGAMENTO
+async function checkStatus() {
+  const res = await fetch(API + "/status");
+  const data = await res.json();
 
-      if (paid) {
-        btn.classList.remove("locked");
-        btn.classList.add("unlocked");
-        btn.innerText = "🔥 CLICK ME";
-      } else {
-        btn.classList.add("locked");
-        btn.innerText = "🔒 Pay $1 to unlock";
-      }
-    }
+  paid = data.paid;
 
-    // =========================
-    // CLICK ACTION
-    // =========================
-    btn.onclick = async () => {
-      if (!paid) {
-        alert("You must pay first.");
-        return;
-      }
+  if (paid) {
+    btn.classList.remove("locked");
+    btn.classList.add("unlocked");
+    btn.innerText = "🔥 CLICK ME";
+  }
+}
 
-      await fetch(API + "/register-click", { method: "POST" });
-      loadClicks();
-    };
+// CLIQUE
+btn.onclick = async () => {
+  if (!paid) return alert("Pay first!");
 
-    // =========================
-    // LOAD COUNTER
-    // =========================
-    async function loadClicks() {
-      const res = await fetch(API + "/click-count");
-      const data = await res.json();
-      countEl.innerText = data.clicks;
-    }
+  await fetch(API + "/register-click", { method: "POST" });
+  loadClicks();
+};
 
-    // =========================
-    // STRIPE PAYMENT
-    // =========================
-    async function pay() {
-      const res = await fetch(API + "/create-checkout-session", {
-        method: "POST"
-      });
+// CONTADOR
+async function loadClicks() {
+  const res = await fetch(API + "/click-count");
+  const data = await res.json();
+  countEl.innerText = data.clicks;
+}
 
-      const data = await res.json();
-      window.location.href = data.url;
-    }
+// PAGAMENTO
+async function pay() {
+  const res = await fetch(API + "/create-checkout-session", {
+    method: "POST"
+  });
 
-    // =========================
-    // INIT
-    // =========================
-    checkStatus();
-    loadClicks();
+  const data = await res.json();
+  window.location.href = data.url;
+}
 
-    // refresh status every 3 seconds
-    setInterval(checkStatus, 3000);
-  </script>
+// INIT
+checkStatus();
+loadClicks();
+setInterval(checkStatus, 3000);
+</script>
 
 </body>
 </html>
