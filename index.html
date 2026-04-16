@@ -1,134 +1,70 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Click Challenge</title>
+<script>
+const button = document.getElementById("clickButton");
+const counter = document.getElementById("counter");
+const lockIcon = document.getElementById("lockIcon");
+const payText = document.getElementById("payText");
 
-  <style>
-    body {
-      background: #0f0f0f;
-      color: white;
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding-top: 100px;
-    }
+const API = "https://stripe-click-backend.onrender.com";
 
-    #clickButton {
-      width: 260px;
-      height: 260px;
-      border-radius: 50%;
-      border: none;
-      font-size: 18px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      position: relative;
-    }
+// 🔥 FUNÇÃO ÚNICA DE ESTADO
+function isUnlocked() {
+  return localStorage.getItem("unlocked") === "true";
+}
 
-    .locked {
-      background: #444;
-      cursor: not-allowed;
-    }
+// 🔓 desbloqueio via Stripe (SEM CONFLITO)
+const urlParams = new URLSearchParams(window.location.search);
 
-    .unlocked {
-      background: red;
-      box-shadow: 0 10px 30px rgba(255,0,0,0.4);
-    }
+if (urlParams.get("success") === "true") {
+  localStorage.setItem("unlocked", "true");
 
-    #lockIcon {
-      font-size: 30px;
-      display: block;
-    }
+  // limpa URL pra não reprocessar
+  window.history.replaceState({}, document.title, "/");
+}
 
-    #payText {
-      margin-top: 10px;
-      font-size: 14px;
-      opacity: 0.8;
-    }
+// 🎯 aplica UI corretamente (sempre baseado em função única)
+function render() {
+  if (isUnlocked()) {
+    button.classList.remove("locked");
+    button.classList.add("unlocked");
 
-    #counter {
-      font-size: 40px;
-      margin-top: 40px;
-    }
-  </style>
-</head>
+    lockIcon.style.display = "none";
+    payText.innerText = "Click now!";
+  } else {
+    button.classList.add("locked");
 
-<body>
+    lockIcon.style.display = "block";
+    payText.innerText = "Pay $1 to unlock";
+  }
+}
 
-  <h1>Click Challenge</h1>
+render();
 
-  <button id="clickButton" class="locked">
-    <span id="lockIcon">🔒</span>
-    <div id="payText">Pay $1 to unlock</div>
-  </button>
+// 🔢 carregar contador
+async function loadCounter() {
+  const res = await fetch(API + "/click-count");
+  const data = await res.json();
+  counter.innerText = data.clicks;
+}
 
-  <div id="counter">0</div>
+loadCounter();
 
-  <script>
-    const button = document.getElementById("clickButton");
-    const counter = document.getElementById("counter");
-    const lockIcon = document.getElementById("lockIcon");
-    const payText = document.getElementById("payText");
-
-    let unlocked = localStorage.getItem("unlocked") === "true";
-
-    // 🔓 desbloqueio via Stripe
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get("success") === "true") {
-      unlocked = true;
-      localStorage.setItem("unlocked", "true");
-
-      // limpa URL
-      window.history.replaceState({}, document.title, "/");
-    }
-
-    function updateUI() {
-      if (unlocked) {
-        button.classList.remove("locked");
-        button.classList.add("unlocked");
-
-        lockIcon.style.display = "none";
-        payText.innerText = "Click now!";
-      } else {
-        button.classList.add("locked");
-
-        lockIcon.style.display = "block";
-        payText.innerText = "Pay $1 to unlock";
-      }
-    }
-
-    updateUI();
-
-    // 🔥 clique
-    button.addEventListener("click", async () => {
-      if (!unlocked) {
-        // manda para Stripe
-        const res = await fetch("https://stripe-click-backend.onrender.com/create-checkout-session", {
-          method: "POST"
-        });
-
-        const data = await res.json();
-        window.location.href = data.url;
-        return;
-      }
-
-      // só conta se desbloqueado
-      const res = await fetch("https://stripe-click-backend.onrender.com/register-click", {
-        method: "POST"
-      });
-
-      const data = await res.json();
-      counter.innerText = data.clicks;
+// 🔥 clique
+button.addEventListener("click", async () => {
+  if (!isUnlocked()) {
+    const res = await fetch(API + "/create-checkout-session", {
+      method: "POST"
     });
 
-    // 🔢 carregar contador inicial
-    async function loadCounter() {
-      const res = await fetch("https://stripe-click-backend.onrender.com/click-count");
-      const data = await res.json();
-      counter.innerText = data.clicks;
-    }
+    const data = await res.json();
+    window.location.href = data.url;
+    return;
+  }
 
-    loadCounter();
-  </script>
+  const res = await fetch(API + "/register-click", {
+    method: "POST"
+  });
 
-</body>
-</html>
+  const data = await res.json();
+  counter.innerText = data.clicks;
+});
+</script>
