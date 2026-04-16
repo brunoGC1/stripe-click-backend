@@ -6,45 +6,49 @@
 
 <style>
 body {
-  background:#111;
-  color:white;
-  font-family:Arial;
-  text-align:center;
-  padding-top:100px;
+  background: radial-gradient(circle at top, #1a1a1a, #000);
+  color: white;
+  font-family: Arial;
+  text-align: center;
+  padding-top: 120px;
+}
+
+h1 {
+  opacity: 0.9;
 }
 
 #clickButton {
-  width:240px;
-  height:240px;
-  border-radius:50%;
-  border:none;
-  font-size:18px;
-  transition:0.2s;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  border: none;
+  font-size: 18px;
+  transition: 0.25s;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin: auto;
 }
 
 .locked {
-  background:#222;
-  cursor:not-allowed;
+  background: linear-gradient(145deg, #111, #000);
+  cursor: pointer;
+  box-shadow: 0 0 0 1px #222;
 }
 
 .unlocked {
-  background:red;
-  cursor:pointer;
-  box-shadow:0 10px 30px rgba(255,0,0,0.4);
-}
-
-#lockIcon {
-  font-size:30px;
-  display:block;
-}
-
-#text {
-  margin-top:10px;
+  background: linear-gradient(145deg, #ff3b3b, #b30000);
+  cursor: pointer;
+  box-shadow: 0 10px 40px rgba(255, 0, 0, 0.3);
+  transform: scale(1.05);
 }
 
 #counter {
-  font-size:40px;
-  margin-top:40px;
+  font-size: 48px;
+  margin-top: 50px;
+  opacity: 0.8;
 }
 </style>
 </head>
@@ -54,8 +58,7 @@ body {
 <h1>Click Challenge</h1>
 
 <button id="clickButton" class="locked">
-  <div id="lockIcon">🔒</div>
-  <div id="text">Pay $1 to unlock</div>
+  🔒 Pay $1 to unlock
 </button>
 
 <div id="counter">0</div>
@@ -64,48 +67,53 @@ body {
 const API = "https://stripe-click-backend.onrender.com";
 
 const button = document.getElementById("clickButton");
-const lockIcon = document.getElementById("lockIcon");
-const text = document.getElementById("text");
 const counter = document.getElementById("counter");
 
-// =========================
-// 1. ESTADO (PRIMEIRO)
-// =========================
-let unlocked = localStorage.getItem("unlocked") === "true";
+let unlocked = false;
 
+// =========================
+// VERIFICAR PAGAMENTO REAL
+// =========================
 const params = new URLSearchParams(window.location.search);
+const sessionId = params.get("session_id");
 
-// Stripe retorno
-if (params.get("success") === "true") {
-  unlocked = true;
-  localStorage.setItem("unlocked", "true");
+async function checkPayment() {
+  const saved = localStorage.getItem("unlocked") === "true";
 
-  // limpa URL para não reprocessar
-  window.history.replaceState({}, document.title, "/");
+  if (saved) {
+    unlocked = true;
+    render();
+    return;
+  }
+
+  if (sessionId) {
+    const res = await fetch(`${API}/verify-session?session_id=${sessionId}`);
+    const data = await res.json();
+
+    if (data.paid) {
+      unlocked = true;
+      localStorage.setItem("unlocked", "true");
+    }
+
+    window.history.replaceState({}, document.title, "/");
+  }
+
+  render();
 }
 
-// =========================
-// 2. UI (DEPOIS DO ESTADO)
-// =========================
 function render() {
   if (unlocked) {
     button.classList.remove("locked");
     button.classList.add("unlocked");
-
-    lockIcon.style.display = "none";
-    text.innerText = "Click now!";
+    button.innerText = "Click now!";
   } else {
     button.classList.add("locked");
-
-    lockIcon.style.display = "block";
-    text.innerText = "Pay $1 to unlock";
+    button.innerText = "🔒 Pay $1 to unlock";
   }
 }
 
-render();
-
 // =========================
-// 3. CONTADOR
+// CONTADOR
 // =========================
 async function loadCounter() {
   const res = await fetch(API + "/click-count");
@@ -113,10 +121,8 @@ async function loadCounter() {
   counter.innerText = data.clicks;
 }
 
-loadCounter();
-
 // =========================
-// 4. CLICK
+// CLICK
 // =========================
 button.addEventListener("click", async () => {
 
@@ -137,6 +143,11 @@ button.addEventListener("click", async () => {
   const data = await res.json();
   counter.innerText = data.clicks;
 });
+
+// init
+checkPayment();
+loadCounter();
+render();
 </script>
 
 </body>
