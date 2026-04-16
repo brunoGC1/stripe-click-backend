@@ -46,10 +46,8 @@ end
 # ROOT (evita 404)
 # =========================
 get '/' do
-  content_type :json
-  { ok: true }.to_json
+  send_file File.join(File.dirname(__FILE__), 'index.html')
 end
-
 # =========================
 # CLICK COUNT
 # =========================
