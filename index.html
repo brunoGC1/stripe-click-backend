@@ -16,14 +16,9 @@
       align-items: center;
     }
 
-    .container {
-      text-align: center;
-    }
+    .container { text-align: center; }
 
-    h1 {
-      font-size: 48px;
-      margin-bottom: 20px;
-    }
+    h1 { font-size: 48px; margin-bottom: 20px; }
 
     #counter {
       font-size: 28px;
@@ -31,52 +26,78 @@
       font-weight: bold;
     }
 
-    .button-wrapper {
+    .button-area {
       display: flex;
       align-items: center;
-      justify-content: center;
       gap: 24px;
+      justify-content: center;
+    }
+
+    .button-box {
+      position: relative;
+      width: 260px;
+      height: 260px;
     }
 
     #mainBtn {
-      width: 260px;
-      height: 260px;
+      width: 100%;
+      height: 100%;
       border-radius: 50%;
       border: none;
-      background: red;
+      background: radial-gradient(circle at 30% 30%, #ff5c5c, #b30000);
+      box-shadow: inset 0 -10px 20px rgba(0,0,0,.35),
+                  0 18px 35px rgba(255,0,0,.35);
       color: white;
       font-size: 24px;
       font-weight: bold;
-      box-shadow: 0 12px 30px rgba(255, 0, 0, 0.45);
-      position: relative;
-      padding: 30px;
-      line-height: 1.3;
       cursor: pointer;
-      transition: transform 0.12s ease, box-shadow 0.12s ease;
+      position: relative;
+      z-index: 1;
     }
 
-    #mainBtn.pressed {
-      transform: scale(0.92);
-      box-shadow: 0 4px 12px rgba(255, 0, 0, 0.75);
+    #cover {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.18);
+      backdrop-filter: blur(4px);
+      border: 2px solid rgba(255,255,255,0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 54px;
+      z-index: 2;
+      transition: transform .5s ease, opacity .5s ease;
+      transform-origin: top center;
+    }
+
+    #cover.shake {
+      animation: shake .22s ease;
+    }
+
+    #cover.open {
+      transform: rotateX(75deg) translateY(-35px);
+      opacity: .15;
+      pointer-events: none;
+    }
+
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      50% { transform: translateX(5px); }
+      75% { transform: translateX(-3px); }
+      100% { transform: translateX(0); }
     }
 
     #mainBtn.reward {
-      animation: rewardPulse 0.45s ease;
+      animation: reward .45s ease;
     }
 
-    @keyframes rewardPulse {
+    @keyframes reward {
       0% { transform: scale(1); }
-      30% { transform: scale(0.9); }
+      30% { transform: scale(.9); }
       60% { transform: scale(1.08); }
       100% { transform: scale(1); }
-    }
-
-    #lock {
-      font-size: 48px;
-      position: absolute;
-      top: 18px;
-      right: 22px;
-      transition: transform 0.18s ease;
     }
 
     #sideAction {
@@ -84,14 +105,6 @@
       font-weight: bold;
       cursor: pointer;
       text-decoration: underline;
-      user-select: none;
-    }
-
-    .success {
-      margin-top: 25px;
-      font-size: 22px;
-      color: #22c55e;
-      font-weight: bold;
     }
   </style>
 </head>
@@ -100,93 +113,73 @@
     <h1>$1 Million Click Challenge</h1>
     <p id="counter">0 / 1,000,000 clicks</p>
 
-    <div class="button-wrapper">
-      <button id="mainBtn">
-        <span id="lock">🔒</span>
-        <span id="buttonText">Pay $1 to click the button</span>
-      </button>
+    <div class="button-area">
+      <div class="button-box">
+        <button id="mainBtn">CLICK ME</button>
+        <div id="cover">🔒</div>
+      </div>
 
       <div id="sideAction">Pay here</div>
     </div>
-
-    <div id="message"></div>
   </div>
 
   <script>
-    let clicks = Number(localStorage.getItem('clicks')) || 0;
     let unlocked = false;
-    const maxClicks = 1000000;
-
     const counter = document.getElementById('counter');
-    const lock = document.getElementById('lock');
+    const cover = document.getElementById('cover');
     const sideAction = document.getElementById('sideAction');
-    const message = document.getElementById('message');
     const mainBtn = document.getElementById('mainBtn');
 
-    function updateCounter() {
-      counter.textContent = `${clicks.toLocaleString()} / 1,000,000 clicks`;
+    async function loadCounter() {
+      const res = await fetch('https://stripe-click-backend.onrender.com/click-count');
+      const data = await res.json();
+      counter.textContent = `${data.clicks.toLocaleString()} / 1,000,000 clicks`;
     }
 
-    updateCounter();
+    loadCounter();
 
     const params = new URLSearchParams(window.location.search);
-
     if (params.get('success') === 'true') {
       unlocked = true;
-      lock.textContent = '🔓';
-      sideAction.textContent = 'Click the button';
-      message.innerHTML = '<div class="success">✅ Payment confirmed! Now click the red button.</div>';
+      cover.classList.add('open');
+      sideAction.textContent = 'Now press it';
     }
 
-    mainBtn.addEventListener('click', () => {
+    mainBtn.addEventListener('click', async () => {
       if (!unlocked) {
-        lock.style.transform = 'scale(1.25)';
-        setTimeout(() => {
-          lock.style.transform = 'scale(1)';
-        }, 180);
+        cover.classList.add('shake');
+        setTimeout(() => cover.classList.remove('shake'), 220);
         return;
       }
 
-      if (clicks < maxClicks) {
-        mainBtn.classList.add('pressed');
+      mainBtn.classList.add('reward');
 
-        setTimeout(() => {
-          mainBtn.classList.remove('pressed');
-          mainBtn.classList.add('reward');
+      const res = await fetch('https://stripe-click-backend.onrender.com/register-click', {
+        method: 'POST'
+      });
 
-          clicks++;
-          localStorage.setItem('clicks', clicks);
-          updateCounter();
+      const data = await res.json();
+      counter.textContent = `${data.clicks.toLocaleString()} / 1,000,000 clicks`;
 
-          unlocked = false;
-          lock.textContent = '🔒';
-          sideAction.textContent = 'Pay here';
-          message.innerHTML = '<div class="success">🎉 AMAZING! Your click was counted!</div>';
+      unlocked = false;
+      cover.classList.remove('open');
+      sideAction.textContent = 'Pay here';
 
-          setTimeout(() => {
-            mainBtn.classList.remove('reward');
-          }, 450);
-
-          window.history.replaceState({}, document.title, "/");
-        }, 120);
-      }
+      setTimeout(() => mainBtn.classList.remove('reward'), 450);
+      window.history.replaceState({}, document.title, "/");
     });
 
     sideAction.addEventListener('click', async () => {
       if (unlocked) return;
 
-      try {
-        const response = await fetch('https://stripe-click-backend.onrender.com/create-checkout-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amount: 100, currency: 'usd' })
-        });
+      const response = await fetch('https://stripe-click-backend.onrender.com/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
 
-        const data = await response.json();
-        window.location.href = data.url;
-      } catch (error) {
-        alert('Erro ao iniciar pagamento');
-      }
+      const data = await response.json();
+      window.location.href = data.url;
     });
   </script>
 </body>
