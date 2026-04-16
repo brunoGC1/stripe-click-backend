@@ -16,9 +16,14 @@
       align-items: center;
     }
 
-    .container { text-align: center; }
+    .container {
+      text-align: center;
+    }
 
-    h1 { font-size: 48px; margin-bottom: 20px; }
+    h1 {
+      font-size: 48px;
+      margin-bottom: 20px;
+    }
 
     #counter {
       font-size: 28px;
@@ -29,56 +34,49 @@
     .button-area {
       display: flex;
       align-items: center;
-      gap: 24px;
       justify-content: center;
+      gap: 30px;
     }
 
-    .button-box {
+    .machine {
       position: relative;
-      width: 260px;
-      height: 260px;
-    }
-
-    #mainBtn {
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-      border: none;
-      background: radial-gradient(circle at 30% 30%, #ff5c5c, #b30000);
-      box-shadow: inset 0 -10px 20px rgba(0,0,0,.35),
-                  0 18px 35px rgba(255,0,0,.35);
-      color: white;
-      font-size: 24px;
-      font-weight: bold;
-      cursor: pointer;
-      position: relative;
-      z-index: 1;
-    }
-
-    #cover {
-      position: absolute;
-      inset: 0;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.18);
-      backdrop-filter: blur(4px);
-      border: 2px solid rgba(255,255,255,0.25);
+      width: 320px;
+      height: 320px;
       display: flex;
-      align-items: center;
       justify-content: center;
-      font-size: 54px;
-      z-index: 2;
-      transition: transform .5s ease, opacity .5s ease;
-      transform-origin: top center;
+      align-items: center;
     }
 
-    #cover.shake {
-      animation: shake .22s ease;
+    /* tampa quadrada */
+    #coverBox {
+      position: absolute;
+      width: 280px;
+      height: 220px;
+      border: 2px solid rgba(255,255,255,0.35);
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(2px);
+      border-radius: 18px;
+      z-index: 4;
+      transition: transform .55s ease, opacity .55s ease;
+      box-shadow: inset 0 0 25px rgba(255,255,255,0.08);
     }
 
-    #cover.open {
-      transform: rotateX(75deg) translateY(-35px);
-      opacity: .15;
+    #coverBox::after {
+      content: "🔒";
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      font-size: 42px;
+    }
+
+    #coverBox.open {
+      transform: translateY(-170px);
+      opacity: .25;
       pointer-events: none;
+    }
+
+    #coverBox.shake {
+      animation: shake .22s ease;
     }
 
     @keyframes shake {
@@ -89,15 +87,49 @@
       100% { transform: translateX(0); }
     }
 
-    #mainBtn.reward {
-      animation: reward .45s ease;
+    /* base */
+    .base {
+      position: absolute;
+      bottom: 40px;
+      width: 200px;
+      height: 70px;
+      background: #4b5563;
+      border-radius: 18px;
+      box-shadow: inset 0 -8px 12px rgba(0,0,0,.35);
+      z-index: 1;
     }
 
-    @keyframes reward {
-      0% { transform: scale(1); }
-      30% { transform: scale(.9); }
-      60% { transform: scale(1.08); }
-      100% { transform: scale(1); }
+    /* botão cogumelo 3D */
+    #mainBtn {
+      position: absolute;
+      bottom: 85px;
+      width: 220px;
+      height: 120px;
+      border: none;
+      border-radius: 120px 120px 90px 90px;
+      background: radial-gradient(circle at 30% 25%, #ff8a8a, #ff0000 45%, #a00000 90%);
+      box-shadow:
+        inset 0 10px 18px rgba(255,255,255,.25),
+        inset 0 -14px 18px rgba(0,0,0,.28),
+        0 18px 26px rgba(255,0,0,.35);
+      color: white;
+      font-size: 22px;
+      font-weight: bold;
+      padding: 20px;
+      cursor: pointer;
+      z-index: 2;
+      transition: transform .12s ease;
+    }
+
+    #mainBtn.reward {
+      animation: slam .45s ease;
+    }
+
+    @keyframes slam {
+      0% { transform: translateY(0) scale(1); }
+      30% { transform: translateY(10px) scale(.95); }
+      60% { transform: translateY(-4px) scale(1.05); }
+      100% { transform: translateY(0) scale(1); }
     }
 
     #sideAction {
@@ -105,6 +137,7 @@
       font-weight: bold;
       cursor: pointer;
       text-decoration: underline;
+      user-select: none;
     }
   </style>
 </head>
@@ -114,9 +147,10 @@
     <p id="counter">0 / 1,000,000 clicks</p>
 
     <div class="button-area">
-      <div class="button-box">
-        <button id="mainBtn">CLICK ME</button>
-        <div id="cover">🔒</div>
+      <div class="machine">
+        <div id="coverBox"></div>
+        <div class="base"></div>
+        <button id="mainBtn">Pay $1 to click</button>
       </div>
 
       <div id="sideAction">Pay here</div>
@@ -125,8 +159,9 @@
 
   <script>
     let unlocked = false;
+
     const counter = document.getElementById('counter');
-    const cover = document.getElementById('cover');
+    const coverBox = document.getElementById('coverBox');
     const sideAction = document.getElementById('sideAction');
     const mainBtn = document.getElementById('mainBtn');
 
@@ -141,14 +176,15 @@
     const params = new URLSearchParams(window.location.search);
     if (params.get('success') === 'true') {
       unlocked = true;
-      cover.classList.add('open');
+      coverBox.classList.add('open');
       sideAction.textContent = 'Now press it';
+      mainBtn.textContent = 'CLICK NOW';
     }
 
     mainBtn.addEventListener('click', async () => {
       if (!unlocked) {
-        cover.classList.add('shake');
-        setTimeout(() => cover.classList.remove('shake'), 220);
+        coverBox.classList.add('shake');
+        setTimeout(() => coverBox.classList.remove('shake'), 220);
         return;
       }
 
@@ -162,8 +198,9 @@
       counter.textContent = `${data.clicks.toLocaleString()} / 1,000,000 clicks`;
 
       unlocked = false;
-      cover.classList.remove('open');
+      coverBox.classList.remove('open');
       sideAction.textContent = 'Pay here';
+      mainBtn.textContent = 'Pay $1 to click';
 
       setTimeout(() => mainBtn.classList.remove('reward'), 450);
       window.history.replaceState({}, document.title, "/");
