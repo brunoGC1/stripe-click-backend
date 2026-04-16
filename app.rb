@@ -9,7 +9,7 @@ set :port, ENV.fetch('PORT', 3000)
 Stripe.api_key = ENV['STRIPE_SECRET_KEY']
 
 # =========================
-# DATABASE
+# DB
 # =========================
 def db
   @db ||= PG.connect(ENV['DATABASE_URL'])
@@ -43,11 +43,12 @@ options '*' do
 end
 
 # =========================
-# ROOT (evita 404)
+# ROOT
 # =========================
 get '/' do
   send_file File.join(File.dirname(__FILE__), 'index.html')
 end
+
 # =========================
 # CLICK COUNT
 # =========================
@@ -68,7 +69,7 @@ post '/register-click' do
 end
 
 # =========================
-# STRIPE CHECKOUT
+# STRIPE
 # =========================
 post '/create-checkout-session' do
   content_type :json
@@ -83,13 +84,12 @@ post '/create-checkout-session' do
         currency: 'usd',
         unit_amount: 100,
         product_data: {
-          name: 'Unlock Click Button'
+          name: 'Unlock Click'
         }
       },
       quantity: 1
     }],
 
-    # 🔥 ISSO AQUI É O MAIS IMPORTANTE
     success_url: 'https://stripe-click-backend.onrender.com/?session_id={CHECKOUT_SESSION_ID}',
     cancel_url: 'https://stripe-click-backend.onrender.com/'
   )
@@ -98,7 +98,7 @@ post '/create-checkout-session' do
 end
 
 # =========================
-# VERIFY PAYMENT
+# VERIFY
 # =========================
 get '/verify-session' do
   content_type :json
@@ -107,7 +107,6 @@ get '/verify-session' do
 
   begin
     session = Stripe::Checkout::Session.retrieve(session_id)
-
     { paid: session.payment_status == 'paid' }.to_json
   rescue
     { paid: false }.to_json
