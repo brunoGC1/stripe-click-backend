@@ -8,12 +8,10 @@ set :port, ENV.fetch('PORT', 3000)
 
 Stripe.api_key = ENV['STRIPE_SECRET_KEY']
 
-# conexão com Postgres (Render)
 def db
   @db ||= PG.connect(ENV['DATABASE_URL'])
 end
 
-# cria tabela se não existir
 configure do
   db.exec <<-SQL
     CREATE TABLE IF NOT EXISTS clicks (
@@ -38,7 +36,9 @@ options '*' do
   200
 end
 
-# 🔢 pegar contador global
+# =========================
+# CONTADOR
+# =========================
 get '/click-count' do
   content_type :json
 
@@ -46,7 +46,6 @@ get '/click-count' do
   { clicks: result[0]["count"].to_i }.to_json
 end
 
-# 🔥 incrementa clique (somente após desbloqueio no frontend)
 post '/register-click' do
   content_type :json
 
@@ -56,7 +55,9 @@ post '/register-click' do
   { clicks: result[0]["count"].to_i }.to_json
 end
 
-# 💳 Stripe checkout
+# =========================
+# STRIPE CHECKOUT
+# =========================
 post '/create-checkout-session' do
   content_type :json
 
@@ -73,9 +74,30 @@ post '/create-checkout-session' do
       },
       quantity: 1
     }],
-    success_url: 'https://brunogc1.github.io/stripe-click-backend/?success=true',
-    cancel_url: 'https://brunogc1.github.io/stripe-click-backend/?canceled=true'
+    success_url: 'https://stripe-click-backend.onrender.com/success.html?session_id={CHECKOUT_SESSION_ID}',
+    cancel_url: 'https://stripe-click-backend.onrender.com/'
   )
 
   { url: session.url }.to_json
+end
+
+# =========================
+# VERIFICAÇÃO REAL (IMPORTANTE)
+# =========================
+get '/verify-session' do
+  content_type :json
+
+  session_id = params[:session_id]
+
+  begin
+    session = Stripe::Checkout::Session.retrieve(session_id)
+
+    if session.payment_status == 'paid'
+      { paid: true }.to_json
+    else
+      { paid: false }.to_json
+    end
+  rescue
+    { paid: false }.to_json
+  end
 end
