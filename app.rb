@@ -9,14 +9,7 @@ set :port, ENV.fetch('PORT', 3000)
 Stripe.api_key = ENV['STRIPE_SECRET_KEY']
 
 # =========================
-# ROOT ROUTE
-# =========================
-get '/' do
-  send_file File.join(File.dirname(__FILE__), 'index.html')
-end
-
-# =========================
-# DB
+# DATABASE
 # =========================
 def db
   @db ||= PG.connect(ENV['DATABASE_URL'])
@@ -50,6 +43,14 @@ options '*' do
 end
 
 # =========================
+# ROOT (evita 404)
+# =========================
+get '/' do
+  content_type :json
+  { ok: true }.to_json
+end
+
+# =========================
 # CLICK COUNT
 # =========================
 get '/click-count' do
@@ -69,7 +70,7 @@ post '/register-click' do
 end
 
 # =========================
-# STRIPE
+# STRIPE CHECKOUT
 # =========================
 post '/create-checkout-session' do
   content_type :json
@@ -90,7 +91,8 @@ post '/create-checkout-session' do
       quantity: 1
     }],
 
-    success_url: 'https://stripe-click-backend.onrender.com/',
+    # 🔥 ISSO AQUI É O MAIS IMPORTANTE
+    success_url: 'https://stripe-click-backend.onrender.com/?session_id={CHECKOUT_SESSION_ID}',
     cancel_url: 'https://stripe-click-backend.onrender.com/'
   )
 
@@ -108,11 +110,7 @@ get '/verify-session' do
   begin
     session = Stripe::Checkout::Session.retrieve(session_id)
 
-    if session.payment_status == 'paid'
-      { paid: true }.to_json
-    else
-      { paid: false }.to_json
-    end
+    { paid: session.payment_status == 'paid' }.to_json
   rescue
     { paid: false }.to_json
   end
