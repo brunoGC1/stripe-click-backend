@@ -1,70 +1,108 @@
-<script>
-const button = document.getElementById("clickButton");
-const counter = document.getElementById("counter");
-const lockIcon = document.getElementById("lockIcon");
-const payText = document.getElementById("payText");
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Click Challenge</title>
 
-const API = "https://stripe-click-backend.onrender.com";
-
-// 🔥 FUNÇÃO ÚNICA DE ESTADO
-function isUnlocked() {
-  return localStorage.getItem("unlocked") === "true";
+<style>
+body {
+  background:#111;
+  color:white;
+  font-family:Arial;
+  text-align:center;
+  padding-top:100px;
 }
 
-// 🔓 desbloqueio via Stripe (SEM CONFLITO)
-const urlParams = new URLSearchParams(window.location.search);
+#clickButton {
+  width:240px;
+  height:240px;
+  border-radius:50%;
+  border:none;
+  font-size:18px;
+  transition:0.2s;
+}
 
-if (urlParams.get("success") === "true") {
-  localStorage.setItem("unlocked", "true");
+.locked {
+  background:#222;
+  cursor:not-allowed;
+}
 
-  // limpa URL pra não reprocessar
+.unlocked {
+  background:red;
+  cursor:pointer;
+}
+
+#lockIcon {
+  font-size:30px;
+}
+
+#counter {
+  font-size:40px;
+  margin-top:40px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Click Challenge</h1>
+
+<button id="clickButton" class="locked">
+  <div id="lockIcon">🔒</div>
+  <div id="text">Pay $1 to unlock</div>
+</button>
+
+<div id="counter">0</div>
+
+<script>
+const API = "https://stripe-click-backend.onrender.com";
+
+const button = document.getElementById("clickButton");
+const lockIcon = document.getElementById("lockIcon");
+const text = document.getElementById("text");
+const counter = document.getElementById("counter");
+
+// estado único
+let unlocked = localStorage.getItem("unlocked") === "true";
+
+// Stripe retorno
+const params = new URLSearchParams(window.location.search);
+if (params.get("success") === "true") {
+  unlocked = true;
+  localStorage.setItem("unlocked","true");
   window.history.replaceState({}, document.title, "/");
 }
 
-// 🎯 aplica UI corretamente (sempre baseado em função única)
-function render() {
-  if (isUnlocked()) {
+// render único
+function render(){
+  if(unlocked){
     button.classList.remove("locked");
     button.classList.add("unlocked");
-
-    lockIcon.style.display = "none";
-    payText.innerText = "Click now!";
-  } else {
-    button.classList.add("locked");
-
-    lockIcon.style.display = "block";
-    payText.innerText = "Pay $1 to unlock";
+    lockIcon.style.display="none";
+    text.innerText="Click now!";
   }
 }
-
 render();
 
-// 🔢 carregar contador
-async function loadCounter() {
-  const res = await fetch(API + "/click-count");
-  const data = await res.json();
-  counter.innerText = data.clicks;
-}
+// load counter
+fetch(API+"/click-count")
+.then(r=>r.json())
+.then(d=>counter.innerText=d.clicks);
 
-loadCounter();
-
-// 🔥 clique
-button.addEventListener("click", async () => {
-  if (!isUnlocked()) {
-    const res = await fetch(API + "/create-checkout-session", {
-      method: "POST"
-    });
-
+// click
+button.onclick = async () => {
+  if(!unlocked){
+    const res = await fetch(API+"/create-checkout-session",{method:"POST"});
     const data = await res.json();
     window.location.href = data.url;
     return;
   }
 
-  const res = await fetch(API + "/register-click", {
-    method: "POST"
-  });
-
+  const res = await fetch(API+"/register-click",{method:"POST"});
   const data = await res.json();
   counter.innerText = data.clicks;
-});
+};
 </script>
+
+</body>
+</html>
