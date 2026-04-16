@@ -1,223 +1,140 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>$1 Million Click Challenge</title>
+  <title>Click Challenge</title>
   <style>
     body {
-      margin: 0;
-      min-height: 100vh;
-      background: #0f172a;
-      color: white;
-      font-family: Arial, sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .container {
+      font-family: Arial;
       text-align: center;
+      margin-top: 80px;
+      background: #f5f5f5;
     }
 
-    h1 {
-      font-size: 48px;
-      margin-bottom: 20px;
-    }
-
-    #counter {
-      font-size: 28px;
-      margin-bottom: 40px;
-      font-weight: bold;
-    }
-
-    .button-area {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 30px;
-    }
-
-    .machine {
-      position: relative;
-      width: 320px;
-      height: 320px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    /* tampa quadrada */
-    #coverBox {
-      position: absolute;
-      width: 280px;
-      height: 220px;
-      border: 2px solid rgba(255,255,255,0.35);
-      background: rgba(255,255,255,0.08);
-      backdrop-filter: blur(2px);
-      border-radius: 18px;
-      z-index: 4;
-      transition: transform .55s ease, opacity .55s ease;
-      box-shadow: inset 0 0 25px rgba(255,255,255,0.08);
-    }
-
-    #coverBox::after {
-      content: "🔒";
-      position: absolute;
-      top: 12px;
-      right: 16px;
-      font-size: 42px;
-    }
-
-    #coverBox.open {
-      transform: translateY(-170px);
-      opacity: .25;
-      pointer-events: none;
-    }
-
-    #coverBox.shake {
-      animation: shake .22s ease;
-    }
-
-    @keyframes shake {
-      0% { transform: translateX(0); }
-      25% { transform: translateX(-5px); }
-      50% { transform: translateX(5px); }
-      75% { transform: translateX(-3px); }
-      100% { transform: translateX(0); }
-    }
-
-    /* base */
-    .base {
-      position: absolute;
-      bottom: 40px;
-      width: 200px;
-      height: 70px;
-      background: #4b5563;
-      border-radius: 18px;
-      box-shadow: inset 0 -8px 12px rgba(0,0,0,.35);
-      z-index: 1;
-    }
-
-    /* botão cogumelo 3D */
-    #mainBtn {
-      position: absolute;
-      bottom: 85px;
-      width: 220px;
-      height: 120px;
+    .btn {
+      width: 260px;
+      height: 260px;
+      border-radius: 50%;
       border: none;
-      border-radius: 120px 120px 90px 90px;
-      background: radial-gradient(circle at 30% 25%, #ff8a8a, #ff0000 45%, #a00000 90%);
-      box-shadow:
-        inset 0 10px 18px rgba(255,255,255,.25),
-        inset 0 -14px 18px rgba(0,0,0,.28),
-        0 18px 26px rgba(255,0,0,.35);
+      font-size: 18px;
       color: white;
-      font-size: 22px;
-      font-weight: bold;
-      padding: 20px;
       cursor: pointer;
-      z-index: 2;
-      transition: transform .12s ease;
+      transition: 0.2s;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.2);
     }
 
-    #mainBtn.reward {
-      animation: slam .45s ease;
+    .locked {
+      background: #b00020;
     }
 
-    @keyframes slam {
-      0% { transform: translateY(0) scale(1); }
-      30% { transform: translateY(10px) scale(.95); }
-      60% { transform: translateY(-4px) scale(1.05); }
-      100% { transform: translateY(0) scale(1); }
+    .unlocked {
+      background: #1e88e5;
     }
 
-    #sideAction {
-      font-size: 30px;
-      font-weight: bold;
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .small {
+      margin-top: 20px;
+      font-size: 16px;
+    }
+
+    .pay-btn {
+      margin-top: 20px;
+      padding: 12px 20px;
+      font-size: 16px;
       cursor: pointer;
-      text-decoration: underline;
-      user-select: none;
     }
   </style>
 </head>
+
 <body>
-  <div class="container">
-    <h1>$1 Million Click Challenge</h1>
-    <p id="counter">0 / 1,000,000 clicks</p>
 
-    <div class="button-area">
-      <div class="machine">
-        <div id="coverBox"></div>
-        <div class="base"></div>
-        <button id="mainBtn">Pay $1 to click</button>
-      </div>
+  <h1>Click Challenge</h1>
 
-      <div id="sideAction">Pay here</div>
-    </div>
+  <button id="clickBtn" class="btn locked">
+    🔒 Pay $1 to unlock
+  </button>
+
+  <div class="small">
+    Clicks: <span id="count">0</span>
   </div>
 
+  <button class="pay-btn" onclick="pay()">
+    Pay here
+  </button>
+
   <script>
-    let unlocked = false;
+    let paid = false;
 
-    const counter = document.getElementById('counter');
-    const coverBox = document.getElementById('coverBox');
-    const sideAction = document.getElementById('sideAction');
-    const mainBtn = document.getElementById('mainBtn');
+    const API = "https://stripe-click-backend.onrender.com";
 
-    async function loadCounter() {
-      const res = await fetch('https://stripe-click-backend.onrender.com/click-count');
+    const btn = document.getElementById("clickBtn");
+    const countEl = document.getElementById("count");
+
+    // =========================
+    // CHECK PAYMENT STATUS
+    // =========================
+    async function checkStatus() {
+      const res = await fetch(API + "/status");
       const data = await res.json();
-      counter.textContent = `${data.clicks.toLocaleString()} / 1,000,000 clicks`;
+
+      paid = data.paid;
+
+      if (paid) {
+        btn.classList.remove("locked");
+        btn.classList.add("unlocked");
+        btn.innerText = "🔥 CLICK ME";
+      } else {
+        btn.classList.add("locked");
+        btn.innerText = "🔒 Pay $1 to unlock";
+      }
     }
 
-    loadCounter();
-
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('success') === 'true') {
-      unlocked = true;
-      coverBox.classList.add('open');
-      sideAction.textContent = 'Now press it';
-      mainBtn.textContent = 'CLICK NOW';
-    }
-
-    mainBtn.addEventListener('click', async () => {
-      if (!unlocked) {
-        coverBox.classList.add('shake');
-        setTimeout(() => coverBox.classList.remove('shake'), 220);
+    // =========================
+    // CLICK ACTION
+    // =========================
+    btn.onclick = async () => {
+      if (!paid) {
+        alert("You must pay first.");
         return;
       }
 
-      mainBtn.classList.add('reward');
+      await fetch(API + "/register-click", { method: "POST" });
+      loadClicks();
+    };
 
-      const res = await fetch('https://stripe-click-backend.onrender.com/register-click', {
-        method: 'POST'
+    // =========================
+    // LOAD COUNTER
+    // =========================
+    async function loadClicks() {
+      const res = await fetch(API + "/click-count");
+      const data = await res.json();
+      countEl.innerText = data.clicks;
+    }
+
+    // =========================
+    // STRIPE PAYMENT
+    // =========================
+    async function pay() {
+      const res = await fetch(API + "/create-checkout-session", {
+        method: "POST"
       });
 
       const data = await res.json();
-      counter.textContent = `${data.clicks.toLocaleString()} / 1,000,000 clicks`;
-
-      unlocked = false;
-      coverBox.classList.remove('open');
-      sideAction.textContent = 'Pay here';
-      mainBtn.textContent = 'Pay $1 to click';
-
-      setTimeout(() => mainBtn.classList.remove('reward'), 450);
-      window.history.replaceState({}, document.title, "/");
-    });
-
-    sideAction.addEventListener('click', async () => {
-      if (unlocked) return;
-
-      const response = await fetch('https://stripe-click-backend.onrender.com/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      });
-
-      const data = await response.json();
       window.location.href = data.url;
-    });
+    }
+
+    // =========================
+    // INIT
+    // =========================
+    checkStatus();
+    loadClicks();
+
+    // refresh status every 3 seconds
+    setInterval(checkStatus, 3000);
   </script>
+
 </body>
 </html>
