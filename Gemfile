@@ -4,3 +4,4 @@ gem 'sinatra'
 gem 'stripe'
 gem 'puma'
 gem 'rackup'
+gem "pg"
