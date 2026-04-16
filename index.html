@@ -6,106 +6,160 @@
 
 <style>
 body {
-  background: radial-gradient(circle at top, #1a1a1a, #000);
-  color: white;
+  margin: 0;
   font-family: Arial;
+  background: linear-gradient(135deg, #1d2b64, #f8cdda);
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+/* CARD */
+.card {
+  background: white;
+  padding: 40px;
+  border-radius: 20px;
+  width: 360px;
   text-align: center;
-  padding-top: 120px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
 }
 
 h1 {
-  opacity: 0.9;
+  margin-bottom: 10px;
 }
 
-#clickButton {
-  width: 260px;
-  height: 260px;
-  border-radius: 50%;
+.lock {
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+
+/* BUTTONS */
+.btn-click {
+  width: 100%;
+  padding: 18px;
   border: none;
+  border-radius: 12px;
   font-size: 18px;
-  transition: 0.25s;
-  margin: auto;
+  margin-top: 15px;
   cursor: pointer;
+  transition: 0.2s;
 }
 
 .locked {
-  background: linear-gradient(145deg, #111, #000);
-  box-shadow: 0 0 0 1px #222;
+  background: #ff3b3b;
+  color: white;
+}
+
+.locked:hover {
+  background: #e60000;
 }
 
 .unlocked {
-  background: linear-gradient(145deg, #ff3b3b, #b30000);
-  box-shadow: 0 10px 40px rgba(255, 0, 0, 0.3);
-  transform: scale(1.05);
+  background: #ff3b3b;
+  color: white;
+  font-weight: bold;
 }
 
+.pay-btn {
+  margin-top: 10px;
+  background: #222;
+  color: white;
+}
+
+.pay-btn:hover {
+  background: #000;
+}
+
+/* COUNTER */
 #counter {
-  font-size: 48px;
-  margin-top: 50px;
-  opacity: 0.8;
+  font-size: 42px;
+  margin-top: 20px;
 }
 </style>
 </head>
 
 <body>
 
-<h1>Click Challenge</h1>
+<div class="card">
 
-<button id="clickButton" class="locked">
-  🔒 Pay $1 to unlock
-</button>
+  <div id="lockIcon" class="lock">🔒</div>
 
-<div id="counter">0</div>
+  <h1>Click Challenge</h1>
+
+  <p id="text">Pay 1 dollar to unlock clicking</p>
+
+  <button id="clickButton" class="btn-click locked">
+    Click is locked
+  </button>
+
+  <button id="payButton" class="btn-click pay-btn">
+    Pay here ($1)
+  </button>
+
+  <div id="counter">0</div>
+
+</div>
 
 <script>
 const API = "https://stripe-click-backend.onrender.com";
 
-const button = document.getElementById("clickButton");
+const clickBtn = document.getElementById("clickButton");
+const payBtn = document.getElementById("payButton");
 const counter = document.getElementById("counter");
+const lockIcon = document.getElementById("lockIcon");
+const text = document.getElementById("text");
 
 let unlocked = localStorage.getItem("unlocked") === "true";
 
-// =========================
-// RENDER UI
-// =========================
+/* =========================
+   RENDER UI
+========================= */
 function render() {
   if (unlocked) {
-    button.classList.remove("locked");
-    button.classList.add("unlocked");
-    button.innerText = "Click now!";
+    lockIcon.style.display = "none";
+    text.innerText = "You are unlocked!";
+    clickBtn.innerText = "CLICK ME!";
+    clickBtn.classList.remove("locked");
+    clickBtn.classList.add("unlocked");
   } else {
-    button.classList.add("locked");
-    button.innerText = "🔒 Pay $1 to unlock";
+    lockIcon.style.display = "block";
+    text.innerText = "Pay 1 dollar to unlock clicking";
+    clickBtn.innerText = "Click is locked";
+    clickBtn.classList.add("locked");
   }
 }
 
 render();
 
-// =========================
-// CONTADOR
-// =========================
+/* =========================
+   LOAD COUNTER
+========================= */
 async function loadCounter() {
   const res = await fetch(API + "/click-count");
   const data = await res.json();
   counter.innerText = data.clicks;
 }
-
 loadCounter();
 
-// =========================
-// BOTÃO
-// =========================
-button.addEventListener("click", async () => {
+/* =========================
+   PAY BUTTON
+========================= */
+payBtn.addEventListener("click", async () => {
+  const res = await fetch(API + "/create-checkout-session", {
+    method: "POST"
+  });
 
-  if (!unlocked) {
-    const res = await fetch(API + "/create-checkout-session", {
-      method: "POST"
-    });
+  const data = await res.json();
+  window.location.href = data.url;
+});
 
-    const data = await res.json();
-    window.location.href = data.url;
-    return;
-  }
+/* =========================
+   CLICK BUTTON
+========================= */
+clickBtn.addEventListener("click", async () => {
+  if (!unlocked) return;
 
   const res = await fetch(API + "/register-click", {
     method: "POST"
@@ -115,15 +169,14 @@ button.addEventListener("click", async () => {
   counter.innerText = data.clicks;
 });
 
-// =========================
-// VERIFICA PAGAMENTO REAL
-// =========================
+/* =========================
+   CHECK STRIPE RETURN
+========================= */
 async function checkPayment() {
   const params = new URLSearchParams(window.location.search);
   const sessionId = params.get("session_id");
 
-  if (localStorage.getItem("unlocked") === "true") {
-    unlocked = true;
+  if (unlocked) {
     render();
     return;
   }
