@@ -47,20 +47,11 @@
       color: white;
       font-size: 24px;
       font-weight: bold;
-      cursor: pointer;
       box-shadow: 0 12px 30px rgba(255, 0, 0, 0.45);
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
       position: relative;
       padding: 30px;
       line-height: 1.3;
-    }
-
-    #mainBtn:hover {
-      transform: scale(1.04);
-    }
-
-    #mainBtn:active {
-      transform: scale(0.98);
+      cursor: pointer;
     }
 
     #lock {
@@ -68,6 +59,7 @@
       position: absolute;
       top: 18px;
       right: 22px;
+      transition: transform 0.18s ease;
     }
 
     #sideAction {
@@ -122,7 +114,7 @@
 
     const params = new URLSearchParams(window.location.search);
 
-    // depois do pagamento
+    // voltou do Stripe = desbloqueia
     if (params.get('success') === 'true') {
       unlocked = true;
       lock.textContent = '🔓';
@@ -130,9 +122,16 @@
       message.innerHTML = '<div class="success">✅ Payment confirmed! Now click the red button.</div>';
     }
 
-    // clique NO BOTÃO só funciona se estiver desbloqueado
+    // clique no botão vermelho
     mainBtn.addEventListener('click', () => {
-      if (!unlocked) return;
+      // se estiver bloqueado, só anima o cadeado
+      if (!unlocked) {
+        lock.style.transform = 'scale(1.25)';
+        setTimeout(() => {
+          lock.style.transform = 'scale(1)';
+        }, 180);
+        return;
+      }
 
       if (clicks < maxClicks) {
         clicks++;
@@ -148,7 +147,7 @@
       }
     });
 
-    // clique AO LADO abre stripe
+    // clique lateral = abre pagamento
     sideAction.addEventListener('click', async () => {
       if (unlocked) return;
 
