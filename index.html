@@ -25,22 +25,19 @@ h1 {
   font-size: 18px;
   transition: 0.25s;
   display: flex;
-  flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 10px;
   margin: auto;
+  cursor: pointer;
 }
 
 .locked {
   background: linear-gradient(145deg, #111, #000);
-  cursor: pointer;
   box-shadow: 0 0 0 1px #222;
 }
 
 .unlocked {
   background: linear-gradient(145deg, #ff3b3b, #b30000);
-  cursor: pointer;
   box-shadow: 0 10px 40px rgba(255, 0, 0, 0.3);
   transform: scale(1.05);
 }
@@ -72,35 +69,15 @@ const counter = document.getElementById("counter");
 let unlocked = false;
 
 // =========================
-// VERIFICAR PAGAMENTO REAL
+// CHECK SE JÁ PAGOU (LOCAL)
 // =========================
-const params = new URLSearchParams(window.location.search);
-const sessionId = params.get("session_id");
-
-async function checkPayment() {
-  const saved = localStorage.getItem("unlocked") === "true";
-
-  if (saved) {
-    unlocked = true;
-    render();
-    return;
-  }
-
-  if (sessionId) {
-    const res = await fetch(`${API}/verify-session?session_id=${sessionId}`);
-    const data = await res.json();
-
-    if (data.paid) {
-      unlocked = true;
-      localStorage.setItem("unlocked", "true");
-    }
-
-    window.history.replaceState({}, document.title, "/");
-  }
-
-  render();
+if (localStorage.getItem("unlocked") === "true") {
+  unlocked = true;
 }
 
+// =========================
+// RENDER UI
+// =========================
 function render() {
   if (unlocked) {
     button.classList.remove("locked");
@@ -112,8 +89,10 @@ function render() {
   }
 }
 
+render();
+
 // =========================
-// CONTADOR
+// CONTADOR GLOBAL
 // =========================
 async function loadCounter() {
   const res = await fetch(API + "/click-count");
@@ -121,11 +100,16 @@ async function loadCounter() {
   counter.innerText = data.clicks;
 }
 
+loadCounter();
+
 // =========================
-// CLICK
+// BOTÃO
 // =========================
 button.addEventListener("click", async () => {
 
+  // =========================
+  // SE NÃO PAGOU → STRIPE
+  // =========================
   if (!unlocked) {
     const res = await fetch(API + "/create-checkout-session", {
       method: "POST"
@@ -136,6 +120,9 @@ button.addEventListener("click", async () => {
     return;
   }
 
+  // =========================
+  // SE PAGOU → CLICK
+  // =========================
   const res = await fetch(API + "/register-click", {
     method: "POST"
   });
@@ -144,10 +131,38 @@ button.addEventListener("click", async () => {
   counter.innerText = data.clicks;
 });
 
-// init
+// =========================
+// POLLING DO PAGAMENTO (IMPORTANTE)
+// =========================
+async function checkPayment() {
+  // se já está unlocked localmente, só mantém
+  if (localStorage.getItem("unlocked") === "true") {
+    unlocked = true;
+    render();
+    return;
+  }
+
+  // tenta validar via backend (SEGURANÇA REAL)
+  const params = new URLSearchParams(window.location.search);
+  const sessionId = params.get("session_id");
+
+  if (sessionId) {
+    const res = await fetch(`${API}/verify-session?session_id=${sessionId}`);
+    const data = await res.json();
+
+    if (data.paid) {
+      unlocked = true;
+      localStorage.setItem("unlocked", "true");
+    }
+
+    // limpa URL
+    window.history.replaceState({}, document.title, "/");
+  }
+
+  render();
+}
+
 checkPayment();
-loadCounter();
-render();
 </script>
 
 </body>
