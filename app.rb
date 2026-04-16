@@ -116,3 +116,4 @@ end
 get '/cancel' do
   "Pagamento cancelado. Tente novamente."
 end
+
