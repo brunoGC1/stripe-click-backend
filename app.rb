@@ -8,12 +8,12 @@ set :port, ENV.fetch('PORT', 3000)
 
 Stripe.api_key = ENV['STRIPE_SECRET_KEY']
 
-# Conexão com Postgres (Render)
+# conexão com Postgres (Render)
 def db
   @db ||= PG.connect(ENV['DATABASE_URL'])
 end
 
-# Garante tabela de clicks
+# cria tabela se não existir
 configure do
   db.exec <<-SQL
     CREATE TABLE IF NOT EXISTS clicks (
@@ -38,7 +38,7 @@ options '*' do
   200
 end
 
-# 🔢 Pega contador global
+# 🔢 pegar contador global
 get '/click-count' do
   content_type :json
 
@@ -46,7 +46,7 @@ get '/click-count' do
   { clicks: result[0]["count"].to_i }.to_json
 end
 
-# 🔥 Incrementa clique (SÓ depois de pago)
+# 🔥 incrementa clique (somente após desbloqueio no frontend)
 post '/register-click' do
   content_type :json
 
@@ -56,7 +56,7 @@ post '/register-click' do
   { clicks: result[0]["count"].to_i }.to_json
 end
 
-# 💳 Criar pagamento Stripe
+# 💳 Stripe checkout
 post '/create-checkout-session' do
   content_type :json
 
