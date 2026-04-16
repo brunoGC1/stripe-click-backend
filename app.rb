@@ -7,14 +7,27 @@ set :port, ENV.fetch('PORT', 3000)
 
 Stripe.api_key = ENV['STRIPE_SECRET_KEY']
 
+$global_clicks = 0
+
 before do
   response.headers['Access-Control-Allow-Origin'] = '*'
-  response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+  response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
   response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
 end
 
-options '/create-checkout-session' do
+options '*' do
   200
+end
+
+get '/click-count' do
+  content_type :json
+  { clicks: $global_clicks }.to_json
+end
+
+post '/register-click' do
+  content_type :json
+  $global_clicks += 1
+  { clicks: $global_clicks }.to_json
 end
 
 post '/create-checkout-session' do
