@@ -8,7 +8,7 @@
 body {
   margin: 0;
   font-family: Arial;
-  background: linear-gradient(135deg, #ff9a9e, #fad0c4);
+  background: linear-gradient(135deg, #1d2b64, #f8cdda);
   height: 100vh;
   display: flex;
   align-items: center;
@@ -24,12 +24,17 @@ body {
   box-shadow: 0 20px 60px rgba(0,0,0,0.2);
 }
 
-h1 {
+.lock {
+  font-size: 40px;
   margin-bottom: 10px;
 }
 
-.lock {
-  font-size: 40px;
+h1 {
+  margin: 10px 0;
+}
+
+p {
+  color: #555;
 }
 
 button {
@@ -45,6 +50,7 @@ button {
 #clickBtn {
   background: #ff3b3b;
   color: white;
+  font-weight: bold;
 }
 
 #clickBtn.locked {
@@ -58,7 +64,7 @@ button {
 }
 
 #counter {
-  font-size: 40px;
+  font-size: 42px;
   margin-top: 20px;
 }
 </style>
@@ -71,7 +77,6 @@ button {
   <div class="lock" id="lock">🔒</div>
 
   <h1>Click Challenge</h1>
-
   <p id="text">Pay $1 to unlock clicking</p>
 
   <button id="clickBtn" class="locked">Locked</button>
@@ -92,10 +97,13 @@ const counter = document.getElementById("counter");
 const lock = document.getElementById("lock");
 const text = document.getElementById("text");
 
+/* =========================
+   UI
+========================= */
 function render() {
   if (unlocked) {
     lock.style.display = "none";
-    text.innerText = "You are unlocked!";
+    text.innerText = "Unlocked!";
     clickBtn.innerText = "CLICK!";
     clickBtn.classList.remove("locked");
   } else {
@@ -108,14 +116,19 @@ function render() {
 
 render();
 
+/* =========================
+   COUNTER
+========================= */
 async function loadCounter() {
   const res = await fetch(API + "/click-count");
   const data = await res.json();
   counter.innerText = data.clicks;
 }
-
 loadCounter();
 
+/* =========================
+   PAY
+========================= */
 payBtn.onclick = async () => {
   const res = await fetch(API + "/create-checkout-session", {
     method: "POST"
@@ -125,6 +138,9 @@ payBtn.onclick = async () => {
   window.location.href = data.url;
 };
 
+/* =========================
+   CLICK
+========================= */
 clickBtn.onclick = async () => {
   if (!unlocked) return;
 
@@ -136,6 +152,9 @@ clickBtn.onclick = async () => {
   counter.innerText = data.clicks;
 };
 
+/* =========================
+   PAYMENT CHECK (FINAL FIX)
+========================= */
 async function checkPayment() {
   const params = new URLSearchParams(window.location.search);
   const sessionId = params.get("session_id");
@@ -147,13 +166,15 @@ async function checkPayment() {
   }
 
   if (sessionId) {
-    const res = await fetch(`${API}/verify-session?session_id=${sessionId}`);
-    const data = await res.json();
+    try {
+      const res = await fetch(`${API}/verify-session?session_id=${sessionId}`);
+      const data = await res.json();
 
-    if (data.paid) {
-      unlocked = true;
-      localStorage.setItem("unlocked", "true");
-    }
+      if (data.paid) {
+        unlocked = true;
+        localStorage.setItem("unlocked", "true");
+      }
+    } catch (e) {}
 
     window.history.replaceState({}, document.title, "/");
   }
