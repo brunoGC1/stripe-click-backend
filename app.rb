@@ -7,6 +7,16 @@ set :port, ENV.fetch('PORT', 3000)
 
 Stripe.api_key = ENV['STRIPE_SECRET_KEY']
 
+before do
+  response.headers['Access-Control-Allow-Origin'] = '*'
+  response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+  response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+end
+
+options '/create-checkout-session' do
+  200
+end
+
 post '/create-checkout-session' do
   content_type :json
 
