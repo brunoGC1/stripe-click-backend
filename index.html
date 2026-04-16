@@ -37,30 +37,45 @@ p {
   color: #555;
 }
 
-button {
+/* 🔴 BOTÃO EMERGENCY */
+#clickBtn {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  border: none;
+  margin-top: 20px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+
+  background: radial-gradient(circle at 30% 30%, #ff4d4d, #b30000);
+  color: white;
+  box-shadow: 0 10px 30px rgba(255,0,0,0.4);
+}
+
+#clickBtn:active {
+  transform: scale(0.95);
+}
+
+/* bloqueado */
+.locked {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+}
+
+/* pay button */
+#payBtn {
   width: 100%;
   padding: 15px;
-  margin-top: 10px;
+  margin-top: 20px;
   border: none;
   border-radius: 10px;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-#clickBtn {
-  background: #ff3b3b;
-  color: white;
-  font-weight: bold;
-}
-
-#clickBtn.locked {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-#payBtn {
   background: #222;
   color: white;
+  font-size: 16px;
+  cursor: pointer;
 }
 
 #counter {
@@ -77,9 +92,10 @@ button {
   <div class="lock" id="lock">🔒</div>
 
   <h1>Click Challenge</h1>
-  <p id="text">Pay $1 to unlock clicking</p>
+  <p id="text">Pay $1 to unlock ONE click</p>
 
-  <button id="clickBtn" class="locked">Locked</button>
+  <button id="clickBtn" class="locked">LOCKED</button>
+
   <button id="payBtn">Pay here ($1)</button>
 
   <div id="counter">0</div>
@@ -90,6 +106,7 @@ button {
 const API = "https://stripe-click-backend.onrender.com";
 
 let unlocked = localStorage.getItem("unlocked") === "true";
+let used = localStorage.getItem("used") === "true";
 
 const clickBtn = document.getElementById("clickBtn");
 const payBtn = document.getElementById("payBtn");
@@ -101,15 +118,20 @@ const text = document.getElementById("text");
    UI
 ========================= */
 function render() {
-  if (unlocked) {
+  if (unlocked && !used) {
     lock.style.display = "none";
-    text.innerText = "Unlocked!";
-    clickBtn.innerText = "CLICK!";
+    text.innerText = "You have 1 click available!";
+    clickBtn.innerText = "CLICK NOW";
     clickBtn.classList.remove("locked");
+  } else if (used) {
+    lock.style.display = "block";
+    text.innerText = "Click used. Pay again to unlock.";
+    clickBtn.innerText = "USED";
+    clickBtn.classList.add("locked");
   } else {
     lock.style.display = "block";
-    text.innerText = "Pay $1 to unlock clicking";
-    clickBtn.innerText = "Locked";
+    text.innerText = "Pay $1 to unlock ONE click";
+    clickBtn.innerText = "LOCKED";
     clickBtn.classList.add("locked");
   }
 }
@@ -139,10 +161,10 @@ payBtn.onclick = async () => {
 };
 
 /* =========================
-   CLICK
+   CLICK (ONLY ONCE)
 ========================= */
 clickBtn.onclick = async () => {
-  if (!unlocked) return;
+  if (!unlocked || used) return;
 
   const res = await fetch(API + "/register-click", {
     method: "POST"
@@ -150,14 +172,28 @@ clickBtn.onclick = async () => {
 
   const data = await res.json();
   counter.innerText = data.clicks;
+
+  // trava após 1 clique
+  used = true;
+  unlocked = false;
+
+  localStorage.setItem("used", "true");
+  localStorage.setItem("unlocked", "false");
+
+  render();
 };
 
 /* =========================
-   PAYMENT CHECK (FINAL FIX)
+   CHECK PAYMENT
 ========================= */
 async function checkPayment() {
   const params = new URLSearchParams(window.location.search);
   const sessionId = params.get("session_id");
+
+  if (used) {
+    render();
+    return;
+  }
 
   if (localStorage.getItem("unlocked") === "true") {
     unlocked = true;
