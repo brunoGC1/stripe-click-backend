@@ -9,7 +9,7 @@ set :port, ENV.fetch('PORT', 3000)
 Stripe.api_key = ENV['STRIPE_SECRET_KEY']
 
 # =========================
-# POSTGRES CONNECTION
+# POSTGRES
 # =========================
 
 def db
@@ -48,7 +48,7 @@ options '*' do
 end
 
 # =========================
-# CLICK FUNCTIONS
+# CLICK LOGIC (POSTGRES)
 # =========================
 
 def get_clicks
@@ -63,6 +63,10 @@ end
 # ROUTES
 # =========================
 
+get '/' do
+  "API online"
+end
+
 get '/click-count' do
   content_type :json
   { clicks: get_clicks }.to_json
@@ -73,6 +77,10 @@ post '/register-click' do
   increment_clicks
   { clicks: get_clicks }.to_json
 end
+
+# =========================
+# STRIPE CHECKOUT
+# =========================
 
 post '/create-checkout-session' do
   content_type :json
@@ -90,9 +98,21 @@ post '/create-checkout-session' do
       },
       quantity: 1
     }],
-    success_url: 'https://stripe-click-backend.onrender.com/?success=true',
-    cancel_url: 'https://stripe-click-backend.onrender.com/?cancel=true'
+    success_url: 'https://stripe-click-backend.onrender.com/success?session_id={CHECKOUT_SESSION_ID}',
+    cancel_url: 'https://stripe-click-backend.onrender.com/cancel'
   )
 
   { url: session.url }.to_json
+end
+
+# =========================
+# STRIPE REDIRECT PAGES
+# =========================
+
+get '/success' do
+  "Pagamento aprovado! Agora você pode clicar no botão desbloqueado."
+end
+
+get '/cancel' do
+  "Pagamento cancelado. Tente novamente."
 end
