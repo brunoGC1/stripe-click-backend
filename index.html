@@ -30,10 +30,16 @@ body {
 .unlocked {
   background:red;
   cursor:pointer;
+  box-shadow:0 10px 30px rgba(255,0,0,0.4);
 }
 
 #lockIcon {
   font-size:30px;
+  display:block;
+}
+
+#text {
+  margin-top:10px;
 }
 
 #counter {
@@ -62,46 +68,75 @@ const lockIcon = document.getElementById("lockIcon");
 const text = document.getElementById("text");
 const counter = document.getElementById("counter");
 
-// estado único
+// =========================
+// 1. ESTADO (PRIMEIRO)
+// =========================
 let unlocked = localStorage.getItem("unlocked") === "true";
 
-// Stripe retorno
 const params = new URLSearchParams(window.location.search);
+
+// Stripe retorno
 if (params.get("success") === "true") {
   unlocked = true;
-  localStorage.setItem("unlocked","true");
+  localStorage.setItem("unlocked", "true");
+
+  // limpa URL para não reprocessar
   window.history.replaceState({}, document.title, "/");
 }
 
-// render único
-function render(){
-  if(unlocked){
+// =========================
+// 2. UI (DEPOIS DO ESTADO)
+// =========================
+function render() {
+  if (unlocked) {
     button.classList.remove("locked");
     button.classList.add("unlocked");
-    lockIcon.style.display="none";
-    text.innerText="Click now!";
+
+    lockIcon.style.display = "none";
+    text.innerText = "Click now!";
+  } else {
+    button.classList.add("locked");
+
+    lockIcon.style.display = "block";
+    text.innerText = "Pay $1 to unlock";
   }
 }
+
 render();
 
-// load counter
-fetch(API+"/click-count")
-.then(r=>r.json())
-.then(d=>counter.innerText=d.clicks);
+// =========================
+// 3. CONTADOR
+// =========================
+async function loadCounter() {
+  const res = await fetch(API + "/click-count");
+  const data = await res.json();
+  counter.innerText = data.clicks;
+}
 
-// click
-button.onclick = async () => {
-  if(!unlocked){
-    const res = await fetch(API+"/create-checkout-session",{method:"POST"});
+loadCounter();
+
+// =========================
+// 4. CLICK
+// =========================
+button.addEventListener("click", async () => {
+
+  if (!unlocked) {
+    const res = await fetch(API + "/create-checkout-session", {
+      method: "POST"
+    });
+
     const data = await res.json();
     window.location.href = data.url;
     return;
   }
 
-  const res = await fetch(API+"/register-click",{method:"POST"});
+  const res = await fetch(API + "/register-click", {
+    method: "POST"
+  });
+
   const data = await res.json();
   counter.innerText = data.clicks;
-};
+});
 </script>
 
 </body>
