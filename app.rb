@@ -5,11 +5,12 @@ require 'pg'
 
 set :bind, '0.0.0.0'
 set :port, ENV.fetch('PORT', 3000)
+set :public_folder, 'public'
 
 Stripe.api_key = ENV['STRIPE_SECRET_KEY']
 
 # =========================
-# DB
+# DATABASE
 # =========================
 def db
   @db ||= PG.connect(ENV['DATABASE_URL'])
@@ -27,6 +28,13 @@ configure do
   if result[0]["count"].to_i == 0
     db.exec("INSERT INTO clicks (count) VALUES (0)")
   end
+end
+
+# =========================
+# HOME ROUTE (ESSENCIAL!)
+# =========================
+get '/' do
+  send_file File.join(settings.public_folder, 'index.html')
 end
 
 # =========================
@@ -88,7 +96,7 @@ post '/create-checkout-session' do
 end
 
 # =========================
-# VERIFY PAYMENT (SEGURANÇA REAL)
+# VERIFY PAYMENT
 # =========================
 get '/verify-session' do
   content_type :json
@@ -106,30 +114,4 @@ get '/verify-session' do
   rescue
     { paid: false }.to_json
   end
-end
-
-# =========================
-# WEBHOOK (OPCIONAL MAS CORRETO)
-# =========================
-post '/stripe-webhook' do
-  payload = request.body.read
-  sig_header = request.env['HTTP_STRIPE_SIGNATURE']
-  endpoint_secret = ENV['STRIPE_WEBHOOK_SECRET']
-
-  begin
-    event = Stripe::Webhook.construct_event(
-      payload,
-      sig_header,
-      endpoint_secret
-    )
-  rescue
-    status 400
-    return
-  end
-
-  if event['type'] == 'checkout.session.completed'
-    db.exec("UPDATE clicks SET count = count + 1")
-  end
-
-  status 200
 end
