@@ -8,6 +8,9 @@ set :port, ENV.fetch('PORT', 3000)
 
 Stripe.api_key = ENV['STRIPE_SECRET_KEY']
 
+# =========================
+# DATABASE
+# =========================
 def db
   @db ||= PG.connect(ENV['DATABASE_URL'])
 end
@@ -26,6 +29,9 @@ configure do
   end
 end
 
+# =========================
+# CORS
+# =========================
 before do
   response.headers['Access-Control-Allow-Origin'] = '*'
   response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
@@ -37,7 +43,7 @@ options '*' do
 end
 
 # =========================
-# CONTADOR
+# CLICK COUNTER
 # =========================
 get '/click-count' do
   content_type :json
@@ -82,22 +88,37 @@ post '/create-checkout-session' do
 end
 
 # =========================
-# VERIFICAÇÃO REAL (IMPORTANTE)
+# STRIPE WEBHOOK (ESSENCIAL)
 # =========================
-get '/verify-session' do
-  content_type :json
-
-  session_id = params[:session_id]
+post '/stripe-webhook' do
+  payload = request.body.read
+  sig_header = request.env['HTTP_STRIPE_SIGNATURE']
+  endpoint_secret = ENV['STRIPE_WEBHOOK_SECRET']
 
   begin
-    session = Stripe::Checkout::Session.retrieve(session_id)
-
-    if session.payment_status == 'paid'
-      { paid: true }.to_json
-    else
-      { paid: false }.to_json
-    end
-  rescue
-    { paid: false }.to_json
+    event = Stripe::Webhook.construct_event(
+      payload,
+      sig_header,
+      endpoint_secret
+    )
+  rescue JSON::ParserError
+    status 400
+    return
+  rescue Stripe::SignatureVerificationError
+    status 400
+    return
   end
+
+  # =========================
+  # PAGAMENTO CONFIRMADO
+  # =========================
+  if event['type'] == 'checkout.session.completed'
+    session = event['data']['object']
+
+    # aqui você confirma pagamento real
+    db.exec("UPDATE clicks SET count = count + 1")
+  end
+
+  status 200
+  body ''
 end
