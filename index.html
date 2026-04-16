@@ -52,6 +52,23 @@
       padding: 30px;
       line-height: 1.3;
       cursor: pointer;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    #mainBtn.pressed {
+      transform: scale(0.92);
+      box-shadow: 0 4px 12px rgba(255, 0, 0, 0.75);
+    }
+
+    #mainBtn.reward {
+      animation: rewardPulse 0.45s ease;
+    }
+
+    @keyframes rewardPulse {
+      0% { transform: scale(1); }
+      30% { transform: scale(0.9); }
+      60% { transform: scale(1.08); }
+      100% { transform: scale(1); }
     }
 
     #lock {
@@ -114,7 +131,6 @@
 
     const params = new URLSearchParams(window.location.search);
 
-    // voltou do Stripe = desbloqueia
     if (params.get('success') === 'true') {
       unlocked = true;
       lock.textContent = '🔓';
@@ -122,9 +138,7 @@
       message.innerHTML = '<div class="success">✅ Payment confirmed! Now click the red button.</div>';
     }
 
-    // clique no botão vermelho
     mainBtn.addEventListener('click', () => {
-      // se estiver bloqueado, só anima o cadeado
       if (!unlocked) {
         lock.style.transform = 'scale(1.25)';
         setTimeout(() => {
@@ -134,20 +148,30 @@
       }
 
       if (clicks < maxClicks) {
-        clicks++;
-        localStorage.setItem('clicks', clicks);
-        updateCounter();
+        mainBtn.classList.add('pressed');
 
-        unlocked = false;
-        lock.textContent = '🔒';
-        sideAction.textContent = 'Pay here';
-        message.innerHTML = '<div class="success">🎉 Your click was counted!</div>';
+        setTimeout(() => {
+          mainBtn.classList.remove('pressed');
+          mainBtn.classList.add('reward');
 
-        window.history.replaceState({}, document.title, "/");
+          clicks++;
+          localStorage.setItem('clicks', clicks);
+          updateCounter();
+
+          unlocked = false;
+          lock.textContent = '🔒';
+          sideAction.textContent = 'Pay here';
+          message.innerHTML = '<div class="success">🎉 AMAZING! Your click was counted!</div>';
+
+          setTimeout(() => {
+            mainBtn.classList.remove('reward');
+          }, 450);
+
+          window.history.replaceState({}, document.title, "/");
+        }, 120);
       }
     });
 
-    // clique lateral = abre pagamento
     sideAction.addEventListener('click', async () => {
       if (unlocked) return;
 
