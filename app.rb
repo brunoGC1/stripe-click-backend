@@ -9,7 +9,7 @@ set :port, ENV.fetch('PORT', 3000)
 Stripe.api_key = ENV['STRIPE_SECRET_KEY']
 
 # =========================
-# POSTGRES CONNECTION
+# POSTGRES
 # =========================
 
 def db
@@ -24,18 +24,18 @@ def init_db
     );
   ")
 
-  result = db.exec("SELECT COUNT(*) FROM clicks")
-
-  if result[0]["count"].to_i == 0
-    db.exec("INSERT INTO clicks (count) VALUES (0)")
-  end
-
   db.exec("
     CREATE TABLE IF NOT EXISTS payments (
       id SERIAL PRIMARY KEY,
       paid BOOLEAN DEFAULT FALSE
     );
   ")
+
+  # garante linha inicial de clicks
+  result = db.exec("SELECT COUNT(*) FROM clicks")
+  if result[0]["count"].to_i == 0
+    db.exec("INSERT INTO clicks (count) VALUES (0)")
+  end
 end
 
 init_db
@@ -61,7 +61,7 @@ options '*' do
 end
 
 # =========================
-# CLICK SYSTEM
+# CLICK LOGIC
 # =========================
 
 def get_clicks
@@ -73,7 +73,7 @@ def increment_clicks
 end
 
 # =========================
-# PAYMENT STATUS
+# PAYMENT STATUS (REAL)
 # =========================
 
 def payment_enabled?
@@ -124,15 +124,15 @@ post '/create-checkout-session' do
       },
       quantity: 1
     }],
-    success_url: 'https://stripe-click-backend.onrender.com/success',
-    cancel_url: 'https://stripe-click-backend.onrender.com/cancel'
+    success_url: 'https://stripe-click-backend.onrender.com/',
+    cancel_url: 'https://stripe-click-backend.onrender.com/'
   )
 
   { url: session.url }.to_json
 end
 
 # =========================
-# STRIPE WEBHOOK (REAL PAYMENT CONFIRMATION)
+# STRIPE WEBHOOK (REAL TRUTH SOURCE)
 # =========================
 
 post '/stripe-webhook' do
@@ -161,32 +161,15 @@ post '/stripe-webhook' do
 end
 
 # =========================
-# SUCCESS / CANCEL PAGES
+# FRONTEND SUPPORT ENDPOINT
 # =========================
 
-get '/success' do
-  <<-HTML
-  <html>
-    <body style="font-family: Arial; text-align:center; margin-top:50px;">
-      <h1>Pagamento confirmado ✅</h1>
-      <p>Agora volte para o site e o botão estará desbloqueado.</p>
+get '/status' do
+  content_type :json
 
-      <a href="/" style="
-        display:inline-block;
-        margin-top:20px;
-        padding:15px 25px;
-        background:red;
-        color:white;
-        text-decoration:none;
-        border-radius:10px;
-      ">
-        Voltar
-      </a>
-    </body>
-  </html>
-  HTML
-end
+  result = db.exec("SELECT paid FROM payments ORDER BY id DESC LIMIT 1")
 
-get '/cancel' do
-  "Pagamento cancelado."
+  paid = result.ntuples > 0 && result[0]["paid"] == "t"
+
+  { paid: paid }.to_json
 end
