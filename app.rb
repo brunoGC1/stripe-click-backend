@@ -9,7 +9,7 @@ set :port, ENV.fetch('PORT', 3000)
 Stripe.api_key = ENV['STRIPE_SECRET_KEY']
 
 # =========================
-# DATABASE
+# DB
 # =========================
 def db
   @db ||= PG.connect(ENV['DATABASE_URL'])
@@ -43,7 +43,7 @@ options '*' do
 end
 
 # =========================
-# CLICK COUNTER
+# CLICK COUNT
 # =========================
 get '/click-count' do
   content_type :json
@@ -80,7 +80,7 @@ post '/create-checkout-session' do
       },
       quantity: 1
     }],
-    success_url: 'https://stripe-click-backend.onrender.com/success.html?session_id={CHECKOUT_SESSION_ID}',
+    success_url: 'https://stripe-click-backend.onrender.com/',
     cancel_url: 'https://stripe-click-backend.onrender.com/'
   )
 
@@ -88,7 +88,28 @@ post '/create-checkout-session' do
 end
 
 # =========================
-# STRIPE WEBHOOK (ESSENCIAL)
+# VERIFY PAYMENT (SEGURANÇA REAL)
+# =========================
+get '/verify-session' do
+  content_type :json
+
+  session_id = params[:session_id]
+
+  begin
+    session = Stripe::Checkout::Session.retrieve(session_id)
+
+    if session.payment_status == 'paid'
+      { paid: true }.to_json
+    else
+      { paid: false }.to_json
+    end
+  rescue
+    { paid: false }.to_json
+  end
+end
+
+# =========================
+# WEBHOOK (OPCIONAL MAS CORRETO)
 # =========================
 post '/stripe-webhook' do
   payload = request.body.read
@@ -101,24 +122,14 @@ post '/stripe-webhook' do
       sig_header,
       endpoint_secret
     )
-  rescue JSON::ParserError
-    status 400
-    return
-  rescue Stripe::SignatureVerificationError
+  rescue
     status 400
     return
   end
 
-  # =========================
-  # PAGAMENTO CONFIRMADO
-  # =========================
   if event['type'] == 'checkout.session.completed'
-    session = event['data']['object']
-
-    # aqui você confirma pagamento real
     db.exec("UPDATE clicks SET count = count + 1")
   end
 
   status 200
-  body ''
 end
