@@ -22,18 +22,19 @@ post '/create-checkout-session' do
 
   session = Stripe::Checkout::Session.create(
     mode: 'payment',
+    customer_email: 'checkout@clickchallenge.com',
     line_items: [{
       price_data: {
         currency: 'usd',
         unit_amount: 100,
         product_data: {
-          name: 'Button Click - $1'
+          name: '1 Dollar Click Challenge'
         }
       },
       quantity: 1
     }],
-    success_url: "#{ENV['BASE_URL']}/success",
-    cancel_url: "#{ENV['BASE_URL']}/cancel"
+    success_url: 'https://stripe-click-backend.vercel.app/?success=true',
+    cancel_url: 'https://stripe-click-backend.vercel.app/?cancel=true'
   )
 
   { url: session.url }.to_json
