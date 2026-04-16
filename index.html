@@ -1,102 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Click Challenge</title>
+
   <style>
     body {
-      font-family: Arial;
+      background: #0f0f0f;
+      color: white;
+      font-family: Arial, sans-serif;
       text-align: center;
-      margin-top: 80px;
+      padding-top: 100px;
     }
 
-    .btn {
+    #clickButton {
       width: 260px;
       height: 260px;
       border-radius: 50%;
       border: none;
       font-size: 18px;
-      color: white;
       cursor: pointer;
-      transition: 0.2s;
+      transition: all 0.15s ease;
+      position: relative;
     }
 
     .locked {
-      background: red;
+      background: #444;
+      cursor: not-allowed;
     }
 
     .unlocked {
-      background: green;
+      background: red;
+      box-shadow: 0 10px 30px rgba(255,0,0,0.4);
+    }
+
+    #lockIcon {
+      font-size: 30px;
+      display: block;
+    }
+
+    #payText {
+      margin-top: 10px;
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    #counter {
+      font-size: 40px;
+      margin-top: 40px;
     }
   </style>
 </head>
 
 <body>
 
-<h1>Click Challenge</h1>
+  <h1>Click Challenge</h1>
 
-<button id="btn" class="btn locked">
-🔒 Pay $1 to unlock
-</button>
+  <button id="clickButton" class="locked">
+    <span id="lockIcon">🔒</span>
+    <div id="payText">Pay $1 to unlock</div>
+  </button>
 
-<br><br>
+  <div id="counter">0</div>
 
-<button onclick="pay()">Pay here</button>
+  <script>
+    const button = document.getElementById("clickButton");
+    const counter = document.getElementById("counter");
+    const lockIcon = document.getElementById("lockIcon");
+    const payText = document.getElementById("payText");
 
-<h3>Clicks: <span id="count">0</span></h3>
+    let unlocked = localStorage.getItem("unlocked") === "true";
 
-<script>
-const API = "https://stripe-click-backend.onrender.com";
+    // 🔓 desbloqueio via Stripe
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("success") === "true") {
+      unlocked = true;
+      localStorage.setItem("unlocked", "true");
 
-let paid = false;
+      // limpa URL
+      window.history.replaceState({}, document.title, "/");
+    }
 
-const btn = document.getElementById("btn");
-const countEl = document.getElementById("count");
+    function updateUI() {
+      if (unlocked) {
+        button.classList.remove("locked");
+        button.classList.add("unlocked");
 
-// STATUS DO PAGAMENTO
-async function checkStatus() {
-  const res = await fetch(API + "/status");
-  const data = await res.json();
+        lockIcon.style.display = "none";
+        payText.innerText = "Click now!";
+      } else {
+        button.classList.add("locked");
 
-  paid = data.paid;
+        lockIcon.style.display = "block";
+        payText.innerText = "Pay $1 to unlock";
+      }
+    }
 
-  if (paid) {
-    btn.classList.remove("locked");
-    btn.classList.add("unlocked");
-    btn.innerText = "🔥 CLICK ME";
-  }
-}
+    updateUI();
 
-// CLIQUE
-btn.onclick = async () => {
-  if (!paid) return alert("Pay first!");
+    // 🔥 clique
+    button.addEventListener("click", async () => {
+      if (!unlocked) {
+        // manda para Stripe
+        const res = await fetch("https://stripe-click-backend.onrender.com/create-checkout-session", {
+          method: "POST"
+        });
 
-  await fetch(API + "/register-click", { method: "POST" });
-  loadClicks();
-};
+        const data = await res.json();
+        window.location.href = data.url;
+        return;
+      }
 
-// CONTADOR
-async function loadClicks() {
-  const res = await fetch(API + "/click-count");
-  const data = await res.json();
-  countEl.innerText = data.clicks;
-}
+      // só conta se desbloqueado
+      const res = await fetch("https://stripe-click-backend.onrender.com/register-click", {
+        method: "POST"
+      });
 
-// PAGAMENTO
-async function pay() {
-  const res = await fetch(API + "/create-checkout-session", {
-    method: "POST"
-  });
+      const data = await res.json();
+      counter.innerText = data.clicks;
+    });
 
-  const data = await res.json();
-  window.location.href = data.url;
-}
+    // 🔢 carregar contador inicial
+    async function loadCounter() {
+      const res = await fetch("https://stripe-click-backend.onrender.com/click-count");
+      const data = await res.json();
+      counter.innerText = data.clicks;
+    }
 
-// INIT
-checkStatus();
-loadClicks();
-setInterval(checkStatus, 3000);
-</script>
+    loadCounter();
+  </script>
 
 </body>
 </html>
