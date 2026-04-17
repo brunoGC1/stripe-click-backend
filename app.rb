@@ -8,9 +8,6 @@ set :port, ENV.fetch('PORT', 3000)
 
 Stripe.api_key = ENV['STRIPE_SECRET_KEY']
 
-# =========================
-# DB
-# =========================
 def db
   @db ||= PG.connect(ENV['DATABASE_URL'])
 end
@@ -24,7 +21,6 @@ configure do
     );
   SQL
 
-  # garante sempre 1 linha válida
   result = db.exec("SELECT COUNT(*) FROM clicks")
 
   if result[0]["count"].to_i == 0
@@ -32,9 +28,6 @@ configure do
   end
 end
 
-# =========================
-# CORS
-# =========================
 before do
   response.headers['Access-Control-Allow-Origin'] = '*'
   response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
@@ -50,7 +43,6 @@ end
 # =========================
 get '/status' do
   content_type :json
-
   row = db.exec("SELECT * FROM clicks LIMIT 1")[0]
 
   {
@@ -65,11 +57,10 @@ end
 post '/click' do
   content_type :json
 
-  row = db.exec("SELECT * FROM clicks LIMIT 1")[0]
+  row = db.exec("SELECT * FROM clicks LIMIT 1")
+  credits = row[0]["credits"].to_i
 
-  credits = row["credits"].to_i
-
-  return { ok: false, clicks: row["count"].to_i, credits: credits }.to_json if credits <= 0
+  return { ok: false }.to_json if credits <= 0
 
   db.exec("UPDATE clicks SET count = count + 1, credits = credits - 1")
 
@@ -83,7 +74,7 @@ post '/click' do
 end
 
 # =========================
-# STRIPE CHECKOUT (SEM WEBHOOK POR ENQUANTO)
+# STRIPE CHECKOUT
 # =========================
 post '/create-checkout-session' do
   content_type :json
@@ -96,9 +87,7 @@ post '/create-checkout-session' do
       price_data: {
         currency: 'usd',
         unit_amount: 100,
-        product_data: {
-          name: '1 Click Credit'
-        }
+        product_data: { name: '1 Click Credit' }
       },
       quantity: 1
     }],
@@ -108,4 +97,30 @@ post '/create-checkout-session' do
   )
 
   { url: session.url }.to_json
+end
+
+# =========================
+# WEBHOOK (AGORA SIM FUNCIONAL)
+# =========================
+post '/stripe-webhook' do
+  payload = request.body.read
+  sig_header = request.env['HTTP_STRIPE_SIGNATURE']
+  endpoint_secret = ENV['STRIPE_WEBHOOK_SECRET']
+
+  event = nil
+
+  begin
+    event = Stripe::Webhook.construct_event(
+      payload, sig_header, endpoint_secret
+    )
+  rescue
+    status 400
+    return
+  end
+
+  if event['type'] == 'checkout.session.completed'
+    db.exec("UPDATE clicks SET credits = credits + 1")
+  end
+
+  status 200
 end
