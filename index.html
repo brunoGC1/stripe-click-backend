@@ -17,7 +17,7 @@ body {
 }
 
 /* =========================
-   GLASS BOX (ACRYLIC)
+   CONTAINER (GLASS BOX)
 ========================= */
 .container {
   width: 360px;
@@ -38,7 +38,9 @@ body {
   transition: 0.6s ease;
 }
 
-/* locked overlay */
+/* =========================
+   OVERLAY LOCK
+========================= */
 .lockOverlay {
   position: absolute;
   inset: 0;
@@ -48,7 +50,9 @@ body {
   justify-content: center;
   flex-direction: column;
   gap: 10px;
+
   transition: 0.6s ease;
+  z-index: 1;
 }
 
 .lockIcon {
@@ -66,8 +70,13 @@ body {
   opacity: 0;
 }
 
+/* IMPORTANT: não bloquear clicks quando desbloqueado */
+.unlocked .lockOverlay {
+  pointer-events: none;
+}
+
 /* =========================
-   BUTTON 3D (MUSHROOM STYLE)
+   3D BUTTON (COGUMELO STYLE)
 ========================= */
 #clickBtn {
   width: 180px;
@@ -88,6 +97,7 @@ body {
   transition: 0.15s ease;
 
   cursor: not-allowed;
+  z-index: 2;
 }
 
 #clickBtn:active {
@@ -102,7 +112,25 @@ body {
 }
 
 /* =========================
-   UI TEXT
+   PAY BUTTON (IMPORTANT FIX)
+========================= */
+#payBtn {
+  margin-top: 20px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px;
+
+  background: #111;
+  color: white;
+
+  cursor: pointer;
+
+  position: relative;
+  z-index: 5; /* 🔥 garante clique acima de tudo */
+}
+
+/* =========================
+   TEXT
 ========================= */
 h1 {
   margin-bottom: 10px;
@@ -113,16 +141,6 @@ h1 {
   font-size: 14px;
   opacity: 0.8;
 }
-
-button.pay {
-  margin-top: 20px;
-  padding: 10px 18px;
-  border: none;
-  border-radius: 10px;
-  background: #111;
-  color: white;
-  cursor: pointer;
-}
 </style>
 </head>
 
@@ -130,7 +148,7 @@ button.pay {
 
 <div id="box" class="container">
 
-  <div class="lockOverlay" id="overlay">
+  <div class="lockOverlay">
     <div class="lockIcon">🔒</div>
     <div class="lockText">Pay $1 to open the box</div>
   </div>
@@ -144,7 +162,7 @@ button.pay {
     Credits: <span id="credits">0</span>
   </div>
 
-  <button class="pay" id="payBtn">Pay here ($1)</button>
+  <button id="payBtn">Pay here ($1)</button>
 
 </div>
 
@@ -155,7 +173,7 @@ let clicks = 0;
 let credits = 0;
 
 /* =========================
-   LOAD
+   LOAD STATUS
 ========================= */
 async function load() {
   const res = await fetch(API + "/status");
@@ -168,7 +186,7 @@ async function load() {
 }
 
 /* =========================
-   RENDER
+   RENDER UI
 ========================= */
 function render() {
   document.getElementById("clicks").innerText = clicks;
@@ -187,12 +205,15 @@ function render() {
 }
 
 /* =========================
-   CLICK
+   CLICK (SAFE)
 ========================= */
 document.getElementById("clickBtn").onclick = async () => {
   if (credits <= 0) return;
 
-  const res = await fetch(API + "/click", { method: "POST" });
+  const res = await fetch(API + "/click", {
+    method: "POST"
+  });
+
   const data = await res.json();
 
   if (!data.ok) return;
@@ -204,19 +225,35 @@ document.getElementById("clickBtn").onclick = async () => {
 };
 
 /* =========================
-   PAY
+   PAY (FIXED + GUARANTEED)
 ========================= */
 document.getElementById("payBtn").onclick = async () => {
-  const res = await fetch(API + "/create-checkout-session", {
-    method: "POST"
-  });
+  console.log("PAY CLICKED");
 
-  const data = await res.json();
-  window.location.href = data.url;
+  try {
+    const res = await fetch(API + "/create-checkout-session", {
+      method: "POST"
+    });
+
+    console.log("STATUS:", res.status);
+
+    const data = await res.json();
+    console.log("DATA:", data);
+
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      alert("Stripe URL missing");
+    }
+
+  } catch (e) {
+    console.log("ERROR:", e);
+    alert("Failed to reach backend");
+  }
 };
 
 /* =========================
-   CHECK PAYMENT
+   CHECK PAYMENT RETURN
 ========================= */
 async function checkPayment() {
   const params = new URLSearchParams(window.location.search);
