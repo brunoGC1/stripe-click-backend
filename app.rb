@@ -3,8 +3,12 @@ require 'stripe'
 require 'json'
 require 'pg'
 
+# =========================
+# CONFIG
+# =========================
 set :bind, '0.0.0.0'
 set :port, ENV.fetch('PORT', 3000)
+set :environment, :production
 
 Stripe.api_key = ENV['STRIPE_SECRET_KEY']
 
@@ -28,7 +32,6 @@ configure do
     );
   SQL
 
-  # init rows
   if db.exec("SELECT COUNT(*) FROM clicks")[0]["count"].to_i == 0
     db.exec("INSERT INTO clicks (count) VALUES (0)")
   end
@@ -39,14 +42,27 @@ configure do
 end
 
 # =========================
-# ROOT
+# CORS
+# =========================
+before do
+  response.headers['Access-Control-Allow-Origin'] = '*'
+  response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+  response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+end
+
+options '*' do
+  200
+end
+
+# =========================
+# FRONTEND
 # =========================
 get '/' do
   send_file File.join(File.dirname(__FILE__), 'index.html')
 end
 
 # =========================
-# GET STATUS (credits + clicks)
+# STATUS (debug)
 # =========================
 get '/status' do
   content_type :json
@@ -58,21 +74,18 @@ get '/status' do
 end
 
 # =========================
-# CLICK (server decides)
+# CLICK (server controls)
 # =========================
 post '/click' do
   content_type :json
 
-  credit = db.exec("SELECT balance FROM credits LIMIT 1")[0]["balance"].to_i
+  credits = db.exec("SELECT balance FROM credits LIMIT 1")[0]["balance"].to_i
 
-  if credit <= 0
+  if credits <= 0
     return { ok: false, error: "no credits" }.to_json
   end
 
-  # consume credit
   db.exec("UPDATE credits SET balance = balance - 1")
-
-  # add click
   db.exec("UPDATE clicks SET count = count + 1")
 
   clicks = db.exec("SELECT count FROM clicks LIMIT 1")[0]["count"].to_i
@@ -82,35 +95,41 @@ post '/click' do
 end
 
 # =========================
-# STRIPE (BUY CREDIT)
+# STRIPE CHECKOUT
 # =========================
 post '/create-checkout-session' do
   content_type :json
 
-  session = Stripe::Checkout::Session.create(
-    mode: 'payment',
-    payment_method_types: ['card'],
+  begin
+    session = Stripe::Checkout::Session.create(
+      mode: 'payment',
+      payment_method_types: ['card'],
 
-    line_items: [{
-      price_data: {
-        currency: 'usd',
-        unit_amount: 100,
-        product_data: {
-          name: '1 Click Credit'
-        }
-      },
-      quantity: 1
-    }],
+      line_items: [{
+        price_data: {
+          currency: 'usd',
+          unit_amount: 100,
+          product_data: {
+            name: '1 Click Credit'
+          }
+        },
+        quantity: 1
+      }],
 
-    success_url: 'https://stripe-click-backend.onrender.com/?session_id={CHECKOUT_SESSION_ID}',
-    cancel_url: 'https://stripe-click-backend.onrender.com/'
-  )
+      success_url: 'https://stripe-click-backend.onrender.com/?session_id={CHECKOUT_SESSION_ID}',
+      cancel_url: 'https://stripe-click-backend.onrender.com/'
+    )
 
-  { url: session.url }.to_json
+    { url: session.url }.to_json
+
+  rescue => e
+    puts "Stripe error: #{e.message}"
+    { error: e.message }.to_json
+  end
 end
 
 # =========================
-# VERIFY + ADD CREDIT
+# VERIFY PAYMENT → ADD CREDIT
 # =========================
 get '/verify-session' do
   content_type :json
@@ -126,7 +145,8 @@ get '/verify-session' do
     end
 
     { paid: false }.to_json
-  rescue
+  rescue => e
+    puts "Verify error: #{e.message}"
     { paid: false }.to_json
   end
 end
