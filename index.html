@@ -1,90 +1,218 @@
-<script>
-const API = "https://stripe-click-backend.onrender.com";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Click Game</title>
 
-let clicks = 0;
-let credits = 0;
-
-const clickBtn = document.getElementById("clickBtn");
-const counter = document.getElementById("counter");
-const creditsText = document.getElementById("creditsText");
-const payBtn = document.getElementById("payBtn");
-
-function render() {
-  counter.innerText = clicks;
-  creditsText.innerText = "Credits: " + credits;
-
-  if (credits > 0) {
-    clickBtn.innerText = "CLICK";
-    clickBtn.className = "btn unlocked";
-  } else {
-    clickBtn.innerText = "🔒 LOCKED";
-    clickBtn.className = "btn locked";
-  }
-}
-
-async function refreshStatus() {
-  try {
-    const res = await fetch(API + "/status");
-    const data = await res.json();
-
-    clicks = data.clicks;
-    credits = data.credits;
-
-    render();
-  } catch (e) {
-    console.log("STATUS ERROR:", e);
-  }
-}
-
-clickBtn.onclick = async () => {
-  if (credits <= 0) return;
-
-  try {
-    const res = await fetch(API + "/click", { method: "POST" });
-    const data = await res.json();
-
-    clicks = data.clicks;
-    credits = data.credits;
-
-    render();
-  } catch (e) {
-    console.log("CLICK ERROR:", e);
-  }
-};
-
-payBtn.onclick = async () => {
-  try {
-    console.log("PAY CLICKED");
-
-    const res = await fetch(API + "/create-checkout-session", {
-      method: "POST"
-    });
-
-    console.log("RESPONSE STATUS:", res.status);
-
-    const text = await res.text();
-    console.log("RAW RESPONSE:", text);
-
-    const data = JSON.parse(text);
-
-    if (data.url) {
-      window.location.href = data.url;
-    } else {
-      alert("Stripe did not return URL");
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial;
+      background: #eef2f7;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
 
-  } catch (e) {
-    console.log("PAY ERROR:", e);
-    alert("Failed to connect to server");
+    .container {
+      text-align: center;
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      width: 320px;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    #counter {
+      font-size: 42px;
+      margin: 20px 0;
+    }
+
+    .btn {
+      width: 170px;
+      height: 170px;
+      border-radius: 50%;
+      border: none;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+
+    .locked {
+      background: #2c2c2c;
+      color: white;
+    }
+
+    .unlocked {
+      background: #e53935;
+      color: white;
+      box-shadow: 0 10px 25px rgba(229,57,53,0.4);
+    }
+
+    .btn:active {
+      transform: scale(0.95);
+    }
+
+    .payBtn {
+      margin-top: 20px;
+      padding: 10px 18px;
+      background: #111;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .small {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #666;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+  <h1>Click Game</h1>
+
+  <div id="counter">0</div>
+
+  <button id="clickBtn" class="btn locked">🔒 LOCKED</button>
+
+  <div class="small" id="creditsText">Credits: 0</div>
+
+  <button id="payBtn" class="payBtn">Pay here</button>
+</div>
+
+<script>
+(() => {
+
+  // =========================
+  // SAFE INIT (EVITA PÁGINA BRANCA)
+  // =========================
+  const API = "https://stripe-click-backend.onrender.com";
+
+  let clicks = 0;
+  let credits = 0;
+
+  const clickBtn = document.getElementById("clickBtn");
+  const counter = document.getElementById("counter");
+  const creditsText = document.getElementById("creditsText");
+  const payBtn = document.getElementById("payBtn");
+
+  if (!clickBtn || !counter || !creditsText || !payBtn) {
+    console.error("DOM not ready");
+    return;
   }
-};
 
-const params = new URLSearchParams(window.location.search);
+  // =========================
+  // RENDER UI
+  // =========================
+  function render() {
+    counter.innerText = clicks;
+    creditsText.innerText = "Credits: " + credits;
 
-if (params.get("success") === "true") {
+    if (credits > 0) {
+      clickBtn.className = "btn unlocked";
+      clickBtn.innerText = "CLICK";
+    } else {
+      clickBtn.className = "btn locked";
+      clickBtn.innerText = "🔒 LOCKED";
+    }
+  }
+
+  // =========================
+  // STATUS SAFE
+  // =========================
+  async function refreshStatus() {
+    try {
+      const res = await fetch(API + "/status");
+      const data = await res.json();
+
+      clicks = data.clicks ?? 0;
+      credits = data.credits ?? 0;
+
+      render();
+    } catch (e) {
+      console.log("status error", e);
+    }
+  }
+
+  // =========================
+  // CLICK SAFE
+  // =========================
+  clickBtn.onclick = async () => {
+    if (credits <= 0) return;
+
+    try {
+      const res = await fetch(API + "/click", { method: "POST" });
+      const data = await res.json();
+
+      clicks = data.clicks ?? clicks;
+      credits = data.credits ?? credits;
+
+      render();
+    } catch (e) {
+      console.log("click error", e);
+    }
+  };
+
+  // =========================
+  // PAY SAFE (STRIPE)
+  // =========================
+  payBtn.onclick = async () => {
+    try {
+      console.log("pay clicked");
+
+      const res = await fetch(API + "/create-checkout-session", {
+        method: "POST"
+      });
+
+      const text = await res.text();
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        console.log("invalid json:", text);
+        alert("Server error");
+        return;
+      }
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert("Stripe error: no url");
+      }
+
+    } catch (e) {
+      console.log("pay error", e);
+      alert("Failed to connect to server");
+    }
+  };
+
+  // =========================
+  // RETURN FROM STRIPE
+  // =========================
+  const params = new URLSearchParams(window.location.search);
+
+  if (params.get("success") === "true") {
+    refreshStatus();
+    window.history.replaceState({}, document.title, "/index.html");
+  }
+
+  // init
   refreshStatus();
-  window.history.replaceState({}, document.title, "/index.html");
-}
 
-refreshStatus();
+})();
 </script>
+
+</body>
+</html>
