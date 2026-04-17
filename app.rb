@@ -45,7 +45,7 @@ options '*' do
 end
 
 # =========================
-# STATUS
+# STATUS (frontend usa isso)
 # =========================
 get '/status' do
   content_type :json
@@ -59,15 +59,17 @@ get '/status' do
 end
 
 # =========================
-# CLICK
+# CLICK (consome credit)
 # =========================
 post '/click' do
   content_type :json
 
   result = db.exec("SELECT * FROM clicks LIMIT 1")
-  credits = result[0]["credits"].to_i
 
-  return { ok: false }.to_json if credits <= 0
+  credits = result[0]["credits"].to_i
+  clicks  = result[0]["count"].to_i
+
+  return { ok: false, clicks: clicks, credits: credits }.to_json if credits <= 0
 
   db.exec("UPDATE clicks SET count = count + 1, credits = credits - 1")
 
@@ -104,8 +106,9 @@ post '/create-checkout-session' do
     customer_creation: 'if_required',
     billing_address_collection: 'auto',
 
-    success_url: 'https://stripe-click-backend.onrender.com/?session_id={CHECKOUT_SESSION_ID}',
-    cancel_url: 'https://stripe-click-backend.onrender.com/'
+    # ⚠️ IMPORTANTE: volta pro FRONTEND (GitHub Pages)
+    success_url: 'https://brunogc1.github.io/stripe-click-backend/?session_id={CHECKOUT_SESSION_ID}',
+    cancel_url: 'https://brunogc1.github.io/stripe-click-backend/'
   )
 
   { url: session.url }.to_json
