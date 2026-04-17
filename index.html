@@ -38,7 +38,7 @@ body {
   justify-content: center;
 
   overflow: hidden;
-  transition: transform 0.6s ease;
+  transition: 0.6s ease;
 }
 
 /* =========================
@@ -55,7 +55,7 @@ body {
   gap: 10px;
 
   z-index: 2;
-  transition: 1.2s ease;
+  transition: 1.0s ease;
 }
 
 .lockIcon {
@@ -67,15 +67,14 @@ body {
   opacity: 0.8;
 }
 
-/* unlock suave */
 .unlocked .lockOverlay {
-  transform: scale(1.05) translateY(-120%);
+  transform: translateY(-120%);
   opacity: 0;
   pointer-events: none;
 }
 
 /* =========================
-   BUTTON 3D
+   BUTTON
 ========================= */
 #clickBtn {
   width: 190px;
@@ -129,17 +128,17 @@ body {
 /* =========================
    TEXT
 ========================= */
-h1 {
-  margin-bottom: 10px;
-}
-
 .stats {
   margin-top: 15px;
   font-size: 14px;
   opacity: 0.8;
 }
 
-/* shake animation */
+h1 {
+  margin-bottom: 10px;
+}
+
+/* shake */
 @keyframes shake {
   0% { transform: translateX(0); }
   25% { transform: translateX(-4px); }
@@ -183,7 +182,7 @@ let clicks = 0;
 let credits = 0;
 
 /* =========================
-   AUDIO (100% STABLE FIX)
+   AUDIO (ROBUSTO)
 ========================= */
 function playLockSound() {
   const a = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
@@ -198,16 +197,20 @@ function playClickSound() {
 }
 
 /* =========================
-   LOAD
+   SAFE INIT
 ========================= */
-async function load() {
-  const res = await fetch(API + "/status");
-  const data = await res.json();
+async function init() {
+  try {
+    const res = await fetch(API + "/status");
+    const data = await res.json();
 
-  clicks = data.clicks;
-  credits = data.credits;
+    clicks = data.clicks;
+    credits = data.credits;
 
-  render();
+    render();
+  } catch (e) {
+    console.log("API offline or loading...");
+  }
 }
 
 /* =========================
@@ -230,7 +233,7 @@ function render() {
 }
 
 /* =========================
-   CLICK LOGIC
+   CLICK
 ========================= */
 document.getElementById("clickBtn").onclick = async () => {
 
@@ -245,54 +248,50 @@ document.getElementById("clickBtn").onclick = async () => {
     return;
   }
 
-  const res = await fetch(API + "/click", {
-    method: "POST"
-  });
+  try {
+    const res = await fetch(API + "/click", { method: "POST" });
+    const data = await res.json();
 
-  const data = await res.json();
+    if (!data.ok) {
+      playLockSound();
+      return;
+    }
 
-  if (!data.ok) {
-    playLockSound();
-    return;
+    playClickSound();
+
+    clicks = data.clicks;
+    credits = data.credits;
+
+    render();
+  } catch (e) {
+    console.log("click error", e);
   }
-
-  playClickSound();
-
-  clicks = data.clicks;
-  credits = data.credits;
-
-  render();
 };
 
 /* =========================
    PAY
 ========================= */
 document.getElementById("payBtn").onclick = async () => {
-  const res = await fetch(API + "/create-checkout-session", {
-    method: "POST"
-  });
 
-  const data = await res.json();
+  try {
+    const res = await fetch(API + "/create-checkout-session", {
+      method: "POST"
+    });
 
-  window.location.href = data.url;
+    const data = await res.json();
+
+    if (data.url) {
+      window.location.href = data.url;
+    }
+  } catch (e) {
+    console.log("stripe error", e);
+  }
 };
 
 /* =========================
-   CHECK PAYMENT RETURN
+   BOOT
 ========================= */
-async function checkPayment() {
-  const params = new URLSearchParams(window.location.search);
-  const sessionId = params.get("session_id");
-
-  if (sessionId) {
-    await fetch(`${API}/verify-session?session_id=${sessionId}`);
-    window.history.replaceState({}, document.title, "/");
-  }
-
-  load();
-}
-
-checkPayment();
+init();
 </script>
 
 </body>
