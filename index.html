@@ -13,7 +13,6 @@ body {
   justify-content: center;
 
   font-family: Arial;
-
   background: radial-gradient(circle at top, #3a3f55, #161823);
   color: white;
 }
@@ -39,7 +38,6 @@ body {
   justify-content: center;
 
   overflow: hidden;
-
   transition: transform 0.6s ease;
 }
 
@@ -69,6 +67,7 @@ body {
   opacity: 0.8;
 }
 
+/* unlock suave */
 .unlocked .lockOverlay {
   transform: scale(1.05) translateY(-120%);
   opacity: 0;
@@ -95,7 +94,6 @@ body {
   font-weight: bold;
 
   cursor: not-allowed;
-
   transition: 0.12s ease;
   z-index: 3;
 }
@@ -125,7 +123,6 @@ body {
   color: white;
 
   cursor: pointer;
-
   z-index: 3;
 }
 
@@ -140,6 +137,19 @@ h1 {
   margin-top: 15px;
   font-size: 14px;
   opacity: 0.8;
+}
+
+/* shake animation */
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  50% { transform: translateX(4px); }
+  75% { transform: translateX(-3px); }
+  100% { transform: translateX(0); }
+}
+
+.shake {
+  animation: shake 0.12s;
 }
 </style>
 </head>
@@ -173,23 +183,18 @@ let clicks = 0;
 let credits = 0;
 
 /* =========================
-   AUDIO (FIXED)
+   AUDIO (100% STABLE FIX)
 ========================= */
-let soundLock = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
-let soundClick = new Audio("https://actions.google.com/sounds/v1/impacts/heavy_impact_1.ogg");
+function playLockSound() {
+  const a = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
+  a.volume = 0.7;
+  a.play().catch(() => {});
+}
 
-function playSound(sound) {
-  try {
-    sound.pause();
-    sound.currentTime = 0;
-
-    const playPromise = sound.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(() => {});
-    }
-  } catch (e) {
-    console.log("audio blocked");
-  }
+function playClickSound() {
+  const a = new Audio("https://actions.google.com/sounds/v1/impacts/heavy_impact_1.ogg");
+  a.volume = 0.8;
+  a.play().catch(() => {});
 }
 
 /* =========================
@@ -225,12 +230,18 @@ function render() {
 }
 
 /* =========================
-   CLICK LOGIC (FIXED ORDER)
+   CLICK LOGIC
 ========================= */
 document.getElementById("clickBtn").onclick = async () => {
 
   if (credits <= 0) {
-    playSound(soundLock);
+    playLockSound();
+
+    const box = document.getElementById("box");
+    box.classList.add("shake");
+
+    setTimeout(() => box.classList.remove("shake"), 120);
+
     return;
   }
 
@@ -240,9 +251,12 @@ document.getElementById("clickBtn").onclick = async () => {
 
   const data = await res.json();
 
-  if (!data.ok) return;
+  if (!data.ok) {
+    playLockSound();
+    return;
+  }
 
-  playSound(soundClick);
+  playClickSound();
 
   clicks = data.clicks;
   credits = data.credits;
@@ -259,6 +273,7 @@ document.getElementById("payBtn").onclick = async () => {
   });
 
   const data = await res.json();
+
   window.location.href = data.url;
 };
 
