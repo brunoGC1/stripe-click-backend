@@ -8,6 +8,9 @@ set :port, ENV.fetch('PORT', 3000)
 
 Stripe.api_key = ENV['STRIPE_SECRET_KEY']
 
+# =========================
+# DATABASE
+# =========================
 def db
   @db ||= PG.connect(ENV['DATABASE_URL'])
 end
@@ -22,11 +25,15 @@ configure do
   SQL
 
   result = db.exec("SELECT COUNT(*) FROM clicks")
+
   if result[0]["count"].to_i == 0
-    db.exec("INSERT INTO clicks (count, credits) VALUES (0, 1)")
+    db.exec("INSERT INTO clicks (count, credits) VALUES (0, 0)")
   end
 end
 
+# =========================
+# CORS
+# =========================
 before do
   response.headers['Access-Control-Allow-Origin'] = '*'
   response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
@@ -37,6 +44,9 @@ options '*' do
   200
 end
 
+# =========================
+# STATUS (frontend usa isso)
+# =========================
 get '/status' do
   content_type :json
 
@@ -48,10 +58,14 @@ get '/status' do
   }.to_json
 end
 
+# =========================
+# CLICK (consome credit)
+# =========================
 post '/click' do
   content_type :json
 
   row = db.exec("SELECT * FROM clicks LIMIT 1")[0]
+
   credits = row["credits"].to_i
 
   return { ok: false }.to_json if credits <= 0
@@ -67,6 +81,9 @@ post '/click' do
   }.to_json
 end
 
+# =========================
+# STRIPE CHECKOUT
+# =========================
 post '/create-checkout-session' do
   content_type :json
 
@@ -88,10 +105,39 @@ post '/create-checkout-session' do
     customer_creation: 'if_required',
     billing_address_collection: 'auto',
 
-    # 🔥 FIX DEFINITIVO (NUNCA MAIS MEXER AQUI)
-    success_url: 'https://brunogc1.github.io/stripe-click-backend/index.html?session_id={CHECKOUT_SESSION_ID}',
+    success_url: 'https://brunogc1.github.io/stripe-click-backend/index.html',
     cancel_url: 'https://brunogc1.github.io/stripe-click-backend/index.html'
   )
 
   { url: session.url }.to_json
+end
+
+# =========================
+# STRIPE WEBHOOK (CRÍTICO)
+# =========================
+post '/stripe-webhook' do
+  payload = request.body.read
+  sig_header = request.env['HTTP_STRIPE_SIGNATURE']
+  endpoint_secret = ENV['STRIPE_WEBHOOK_SECRET']
+
+  event = nil
+
+  begin
+    event = Stripe::Webhook.construct_event(
+      payload, sig_header, endpoint_secret
+    )
+  rescue JSON::ParserError
+    status 400
+    return
+  rescue Stripe::SignatureVerificationError
+    status 400
+    return
+  end
+
+  if event['type'] == 'checkout.session.completed'
+    # 🔥 libera 1 crédito por pagamento confirmado REAL
+    db.exec("UPDATE clicks SET credits = credits + 1")
+  end
+
+  status 200
 end
