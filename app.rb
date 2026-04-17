@@ -13,6 +13,15 @@ set :environment, :production
 Stripe.api_key = ENV['STRIPE_SECRET_KEY']
 
 # =========================
+# ANTI-BOT MEMORY
+# =========================
+CLICK_LOG = {}
+
+def client_ip
+  request.ip
+end
+
+# =========================
 # DB
 # =========================
 def db
@@ -62,7 +71,7 @@ get '/' do
 end
 
 # =========================
-# STATUS (debug)
+# STATUS
 # =========================
 get '/status' do
   content_type :json
@@ -70,28 +79,61 @@ get '/status' do
   clicks = db.exec("SELECT count FROM clicks LIMIT 1")[0]["count"].to_i
   credits = db.exec("SELECT balance FROM credits LIMIT 1")[0]["balance"].to_i
 
-  { clicks: clicks, credits: credits }.to_json
+  {
+    clicks: clicks,
+    credits: credits
+  }.to_json
 end
 
 # =========================
-# CLICK (server controls)
+# CLICK + ANTI-BOT
 # =========================
 post '/click' do
   content_type :json
 
+  ip = client_ip
+  now = Time.now.to_i
+
+  # =========================
+  # ANTI-BOT (RATE LIMIT)
+  # =========================
+  last_click = CLICK_LOG[ip]
+
+  if last_click && (now - last_click < 1)
+    return {
+      ok: false,
+      error: "too fast"
+    }.to_json
+  end
+
+  CLICK_LOG[ip] = now
+
+  # =========================
+  # CHECK CREDITS
+  # =========================
   credits = db.exec("SELECT balance FROM credits LIMIT 1")[0]["balance"].to_i
 
   if credits <= 0
-    return { ok: false, error: "no credits" }.to_json
+    return {
+      ok: false,
+      error: "no credits"
+    }.to_json
   end
 
+  # =========================
+  # APPLY CLICK
+  # =========================
   db.exec("UPDATE credits SET balance = balance - 1")
   db.exec("UPDATE clicks SET count = count + 1")
 
   clicks = db.exec("SELECT count FROM clicks LIMIT 1")[0]["count"].to_i
   credits = db.exec("SELECT balance FROM credits LIMIT 1")[0]["balance"].to_i
 
-  { ok: true, clicks: clicks, credits: credits }.to_json
+  {
+    ok: true,
+    clicks: clicks,
+    credits: credits
+  }.to_json
 end
 
 # =========================
@@ -129,7 +171,7 @@ post '/create-checkout-session' do
 end
 
 # =========================
-# VERIFY PAYMENT → ADD CREDIT
+# VERIFY PAYMENT
 # =========================
 get '/verify-session' do
   content_type :json
