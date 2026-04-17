@@ -8,9 +8,6 @@ set :port, ENV.fetch('PORT', 3000)
 
 Stripe.api_key = ENV['STRIPE_SECRET_KEY']
 
-# =========================
-# DATABASE
-# =========================
 def db
   @db ||= PG.connect(ENV['DATABASE_URL'])
 end
@@ -25,15 +22,11 @@ configure do
   SQL
 
   result = db.exec("SELECT COUNT(*) FROM clicks")
-
   if result[0]["count"].to_i == 0
     db.exec("INSERT INTO clicks (count, credits) VALUES (0, 1)")
   end
 end
 
-# =========================
-# CORS
-# =========================
 before do
   response.headers['Access-Control-Allow-Origin'] = '*'
   response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
@@ -44,47 +37,36 @@ options '*' do
   200
 end
 
-# =========================
-# STATUS (frontend usa isso)
-# =========================
 get '/status' do
   content_type :json
 
-  result = db.exec("SELECT * FROM clicks LIMIT 1")
+  row = db.exec("SELECT * FROM clicks LIMIT 1")[0]
 
   {
-    clicks: result[0]["count"].to_i,
-    credits: result[0]["credits"].to_i
+    clicks: row["count"].to_i,
+    credits: row["credits"].to_i
   }.to_json
 end
 
-# =========================
-# CLICK (consome credit)
-# =========================
 post '/click' do
   content_type :json
 
-  result = db.exec("SELECT * FROM clicks LIMIT 1")
+  row = db.exec("SELECT * FROM clicks LIMIT 1")[0]
+  credits = row["credits"].to_i
 
-  credits = result[0]["credits"].to_i
-  clicks  = result[0]["count"].to_i
-
-  return { ok: false, clicks: clicks, credits: credits }.to_json if credits <= 0
+  return { ok: false }.to_json if credits <= 0
 
   db.exec("UPDATE clicks SET count = count + 1, credits = credits - 1")
 
-  updated = db.exec("SELECT * FROM clicks LIMIT 1")
+  updated = db.exec("SELECT * FROM clicks LIMIT 1")[0]
 
   {
     ok: true,
-    clicks: updated[0]["count"].to_i,
-    credits: updated[0]["credits"].to_i
+    clicks: updated["count"].to_i,
+    credits: updated["credits"].to_i
   }.to_json
 end
 
-# =========================
-# STRIPE CHECKOUT
-# =========================
 post '/create-checkout-session' do
   content_type :json
 
@@ -106,9 +88,9 @@ post '/create-checkout-session' do
     customer_creation: 'if_required',
     billing_address_collection: 'auto',
 
-    # ⚠️ IMPORTANTE: volta pro FRONTEND (GitHub Pages)
-    success_url: 'https://brunogc1.github.io/stripe-click-backend/?session_id={CHECKOUT_SESSION_ID}',
-    cancel_url: 'https://brunogc1.github.io/stripe-click-backend/'
+    # 🔥 FIX DEFINITIVO (NUNCA MAIS MEXER AQUI)
+    success_url: 'https://brunogc1.github.io/stripe-click-backend/index.html?session_id={CHECKOUT_SESSION_ID}',
+    cancel_url: 'https://brunogc1.github.io/stripe-click-backend/index.html'
   )
 
   { url: session.url }.to_json
