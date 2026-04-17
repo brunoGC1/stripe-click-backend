@@ -1,178 +1,93 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Click Box</title>
+  <meta charset="UTF-8" />
+  <title>Click Game</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial;
+      background: #f2f4f8;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
 
-<style>
-body {
-  margin: 0;
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    .container {
+      text-align: center;
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      width: 300px;
+    }
 
-  font-family: Arial;
-  background: radial-gradient(circle at top, #3a3f55, #161823);
-  color: white;
-}
+    h1 {
+      margin-bottom: 10px;
+    }
 
-/* =========================
-   CONTAINER 3D
-========================= */
-.container {
-  width: 380px;
-  height: 450px;
-  border-radius: 28px;
+    #counter {
+      font-size: 40px;
+      margin: 20px 0;
+    }
 
-  position: relative;
+    .btn {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      border: none;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.1s;
+    }
 
-  background: linear-gradient(145deg, #2a2f3d, #1a1e2a);
-  box-shadow:
-    0 20px 40px rgba(0,0,0,0.5),
-    inset 0 2px 6px rgba(255,255,255,0.05);
+    .locked {
+      background: #333;
+      color: white;
+    }
 
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+    .unlocked {
+      background: #e53935;
+      color: white;
+      box-shadow: 0 10px 20px rgba(229,57,53,0.4);
+    }
 
-  overflow: hidden;
-  transition: 0.6s ease;
-}
+    .btn:active {
+      transform: scale(0.95);
+    }
 
-/* =========================
-   LOCK OVERLAY
-========================= */
-.lockOverlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 10px;
+    .small {
+      margin-top: 15px;
+      font-size: 14px;
+      color: #666;
+    }
 
-  z-index: 2;
-  transition: 1.0s ease;
-}
-
-.lockIcon {
-  font-size: 40px;
-}
-
-.lockText {
-  font-size: 14px;
-  opacity: 0.8;
-}
-
-.unlocked .lockOverlay {
-  transform: translateY(-120%);
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* =========================
-   BUTTON
-========================= */
-#clickBtn {
-  width: 190px;
-  height: 190px;
-  border-radius: 50%;
-  border: none;
-
-  background: radial-gradient(circle at 30% 30%, #ff4b4b, #8b0000);
-
-  box-shadow:
-    0 14px 0 #4a0000,
-    0 22px 30px rgba(0,0,0,0.45);
-
-  color: white;
-  font-size: 18px;
-  font-weight: bold;
-
-  cursor: not-allowed;
-  transition: 0.12s ease;
-  z-index: 3;
-}
-
-#clickBtn:active {
-  transform: translateY(6px);
-  box-shadow:
-    0 6px 0 #4a0000,
-    0 12px 18px rgba(0,0,0,0.35);
-}
-
-.unlocked #clickBtn {
-  cursor: pointer;
-}
-
-/* =========================
-   PAY BUTTON
-========================= */
-#payBtn {
-  margin-top: 18px;
-  padding: 10px 18px;
-
-  border: none;
-  border-radius: 10px;
-
-  background: #111;
-  color: white;
-
-  cursor: pointer;
-  z-index: 3;
-}
-
-/* =========================
-   TEXT
-========================= */
-.stats {
-  margin-top: 15px;
-  font-size: 14px;
-  opacity: 0.8;
-}
-
-h1 {
-  margin-bottom: 10px;
-}
-
-/* shake */
-@keyframes shake {
-  0% { transform: translateX(0); }
-  25% { transform: translateX(-4px); }
-  50% { transform: translateX(4px); }
-  75% { transform: translateX(-3px); }
-  100% { transform: translateX(0); }
-}
-
-.shake {
-  animation: shake 0.12s;
-}
-</style>
+    .payBtn {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #111;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 
 <body>
 
-<div id="box" class="container">
+<div class="container">
+  <h1>Click Game</h1>
 
-  <div class="lockOverlay">
-    <div class="lockIcon">🔒</div>
-    <div class="lockText">Pay $1 to unlock the box</div>
-  </div>
+  <div id="counter">0</div>
 
-  <h1>Click Box</h1>
+  <button id="clickBtn" class="btn locked">🔒 LOCKED</button>
 
-  <button id="clickBtn">LOCKED</button>
+  <div class="small" id="creditsText">Credits: 0</div>
 
-  <div class="stats">
-    Clicks: <span id="clicks">0</span> |
-    Credits: <span id="credits">0</span>
-  </div>
-
-  <button id="payBtn">Pay here ($1)</button>
-
+  <button class="payBtn" id="payBtn">Pay here</button>
 </div>
 
 <script>
@@ -181,25 +96,31 @@ const API = "https://stripe-click-backend.onrender.com";
 let clicks = 0;
 let credits = 0;
 
-/* =========================
-   AUDIO (ROBUSTO)
-========================= */
-function playLockSound() {
-  const a = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
-  a.volume = 0.7;
-  a.play().catch(() => {});
+const clickBtn = document.getElementById("clickBtn");
+const counter = document.getElementById("counter");
+const creditsText = document.getElementById("creditsText");
+const payBtn = document.getElementById("payBtn");
+
+// =========================
+// RENDER UI
+// =========================
+function render() {
+  counter.innerText = clicks;
+  creditsText.innerText = "Credits: " + credits;
+
+  if (credits > 0) {
+    clickBtn.className = "btn unlocked";
+    clickBtn.innerText = "CLICK";
+  } else {
+    clickBtn.className = "btn locked";
+    clickBtn.innerText = "🔒 LOCKED";
+  }
 }
 
-function playClickSound() {
-  const a = new Audio("https://actions.google.com/sounds/v1/impacts/heavy_impact_1.ogg");
-  a.volume = 0.8;
-  a.play().catch(() => {});
-}
-
-/* =========================
-   SAFE INIT
-========================= */
-async function init() {
+// =========================
+// STATUS
+// =========================
+async function refreshStatus() {
   try {
     const res = await fetch(API + "/status");
     const data = await res.json();
@@ -209,55 +130,22 @@ async function init() {
 
     render();
   } catch (e) {
-    console.log("API offline or loading...");
+    console.log("status error", e);
   }
 }
 
-/* =========================
-   RENDER
-========================= */
-function render() {
-  document.getElementById("clicks").innerText = clicks;
-  document.getElementById("credits").innerText = credits;
-
-  const box = document.getElementById("box");
-  const btn = document.getElementById("clickBtn");
-
-  if (credits > 0) {
-    box.classList.add("unlocked");
-    btn.innerText = "CLICK!";
-  } else {
-    box.classList.remove("unlocked");
-    btn.innerText = "LOCKED";
-  }
-}
-
-/* =========================
-   CLICK
-========================= */
-document.getElementById("clickBtn").onclick = async () => {
-
-  if (credits <= 0) {
-    playLockSound();
-
-    const box = document.getElementById("box");
-    box.classList.add("shake");
-
-    setTimeout(() => box.classList.remove("shake"), 120);
-
-    return;
-  }
+// =========================
+// CLICK
+// =========================
+clickBtn.onclick = async () => {
+  if (credits <= 0) return;
 
   try {
-    const res = await fetch(API + "/click", { method: "POST" });
+    const res = await fetch(API + "/click", {
+      method: "POST"
+    });
+
     const data = await res.json();
-
-    if (!data.ok) {
-      playLockSound();
-      return;
-    }
-
-    playClickSound();
 
     clicks = data.clicks;
     credits = data.credits;
@@ -268,11 +156,10 @@ document.getElementById("clickBtn").onclick = async () => {
   }
 };
 
-/* =========================
-   PAY
-========================= */
-document.getElementById("payBtn").onclick = async () => {
-
+// =========================
+// STRIPE PAY
+// =========================
+payBtn.onclick = async () => {
   try {
     const res = await fetch(API + "/create-checkout-session", {
       method: "POST"
@@ -282,16 +169,29 @@ document.getElementById("payBtn").onclick = async () => {
 
     if (data.url) {
       window.location.href = data.url;
+    } else {
+      alert("Stripe error");
     }
+
   } catch (e) {
-    console.log("stripe error", e);
+    console.log("pay error", e);
+    alert("Failed to connect to server");
   }
 };
 
-/* =========================
-   BOOT
-========================= */
-init();
+// =========================
+// RETURN FROM STRIPE
+// =========================
+const params = new URLSearchParams(window.location.search);
+
+if (params.get("success") === "true") {
+  refreshStatus();
+  window.history.replaceState({}, document.title, "/index.html");
+}
+
+// init
+refreshStatus();
+
 </script>
 
 </body>
