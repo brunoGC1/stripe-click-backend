@@ -2,91 +2,149 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Click Challenge</title>
+<title>Click Box</title>
 
 <style>
 body {
   margin: 0;
   font-family: Arial;
-  background: linear-gradient(135deg, #1d2b64, #f8cdda);
   height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: radial-gradient(circle at top, #2b2b3a, #0d0d12);
+  color: white;
 }
 
-.card {
-  background: white;
-  padding: 40px;
-  border-radius: 20px;
-  width: 380px;
-  text-align: center;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-}
+/* =========================
+   GLASS BOX (ACRYLIC)
+========================= */
+.container {
+  width: 360px;
+  height: 420px;
+  border-radius: 25px;
+  position: relative;
 
-.title {
-  margin-bottom: 10px;
-}
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(12px);
 
-.stats {
   display: flex;
-  justify-content: space-between;
-  margin-bottom: 20px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  overflow: hidden;
+  transition: 0.6s ease;
+}
+
+/* locked overlay */
+.lockOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  transition: 0.6s ease;
+}
+
+.lockIcon {
+  font-size: 40px;
+}
+
+.lockText {
   font-size: 14px;
-  color: #555;
+  opacity: 0.8;
 }
 
-button {
-  width: 100%;
-  padding: 15px;
-  margin-top: 10px;
-  border: none;
-  border-radius: 10px;
-  font-size: 16px;
-  cursor: pointer;
+/* unlock animation */
+.unlocked .lockOverlay {
+  transform: translateY(-100%);
+  opacity: 0;
 }
 
+/* =========================
+   BUTTON 3D (MUSHROOM STYLE)
+========================= */
 #clickBtn {
   width: 180px;
   height: 180px;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #ff4d4d, #b30000);
+  border: none;
+
+  background: radial-gradient(circle at 30% 30%, #ff5c5c, #a80000);
+  box-shadow:
+    0 12px 0 #5a0000,
+    0 18px 25px rgba(0,0,0,0.4);
+
   color: white;
   font-size: 18px;
   font-weight: bold;
-  border: none;
-  margin-top: 20px;
+
+  transform: translateY(0);
+  transition: 0.15s ease;
+
+  cursor: not-allowed;
 }
 
 #clickBtn:active {
-  transform: scale(0.95);
+  transform: translateY(6px);
+  box-shadow:
+    0 6px 0 #5a0000,
+    0 10px 15px rgba(0,0,0,0.3);
 }
 
-#payBtn {
-  background: #222;
+.unlocked #clickBtn {
+  cursor: pointer;
+}
+
+/* =========================
+   UI TEXT
+========================= */
+h1 {
+  margin-bottom: 10px;
+}
+
+.stats {
+  margin-top: 15px;
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+button.pay {
+  margin-top: 20px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px;
+  background: #111;
   color: white;
-}
-
-.locked {
-  opacity: 0.4;
-  cursor: not-allowed;
+  cursor: pointer;
 }
 </style>
 </head>
 
 <body>
 
-<div class="card">
+<div id="box" class="container">
 
-  <h2 class="title">Click System</h2>
-
-  <div class="stats">
-    <div>Clicks: <span id="clicks">0</span></div>
-    <div>Credits: <span id="credits">0</span></div>
+  <div class="lockOverlay" id="overlay">
+    <div class="lockIcon">🔒</div>
+    <div class="lockText">Pay $1 to open the box</div>
   </div>
 
-  <button id="clickBtn" class="locked">NO CREDITS</button>
-  <button id="payBtn">Buy 1 Credit ($1)</button>
+  <h1>Click Box</h1>
+
+  <button id="clickBtn">LOCKED</button>
+
+  <div class="stats">
+    Clicks: <span id="clicks">0</span> |
+    Credits: <span id="credits">0</span>
+  </div>
+
+  <button class="pay" id="payBtn">Pay here ($1)</button>
 
 </div>
 
@@ -97,9 +155,9 @@ let clicks = 0;
 let credits = 0;
 
 /* =========================
-   LOAD STATUS
+   LOAD
 ========================= */
-async function loadStatus() {
+async function load() {
   const res = await fetch(API + "/status");
   const data = await res.json();
 
@@ -116,14 +174,15 @@ function render() {
   document.getElementById("clicks").innerText = clicks;
   document.getElementById("credits").innerText = credits;
 
+  const box = document.getElementById("box");
   const btn = document.getElementById("clickBtn");
 
   if (credits > 0) {
+    box.classList.add("unlocked");
     btn.innerText = "CLICK!";
-    btn.classList.remove("locked");
   } else {
-    btn.innerText = "NO CREDITS";
-    btn.classList.add("locked");
+    box.classList.remove("unlocked");
+    btn.innerText = "LOCKED";
   }
 }
 
@@ -131,6 +190,8 @@ function render() {
    CLICK
 ========================= */
 document.getElementById("clickBtn").onclick = async () => {
+  if (credits <= 0) return;
+
   const res = await fetch(API + "/click", { method: "POST" });
   const data = await res.json();
 
@@ -143,7 +204,7 @@ document.getElementById("clickBtn").onclick = async () => {
 };
 
 /* =========================
-   BUY CREDIT
+   PAY
 ========================= */
 document.getElementById("payBtn").onclick = async () => {
   const res = await fetch(API + "/create-checkout-session", {
@@ -166,7 +227,7 @@ async function checkPayment() {
     window.history.replaceState({}, document.title, "/");
   }
 
-  loadStatus();
+  load();
 }
 
 checkPayment();
