@@ -19,21 +19,20 @@ body {
   background: white;
   padding: 40px;
   border-radius: 20px;
-  width: 360px;
+  width: 380px;
   text-align: center;
   box-shadow: 0 20px 60px rgba(0,0,0,0.2);
 }
 
-.lock {
-  font-size: 40px;
+.title {
   margin-bottom: 10px;
 }
 
-h1 {
-  margin: 10px 0;
-}
-
-p {
+.stats {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  font-size: 14px;
   color: #555;
 }
 
@@ -47,34 +46,30 @@ button {
   cursor: pointer;
 }
 
-/* botão click */
 #clickBtn {
   width: 180px;
   height: 180px;
   border-radius: 50%;
-  border: none;
-  margin-top: 20px;
-  font-size: 18px;
-  font-weight: bold;
   background: radial-gradient(circle at 30% 30%, #ff4d4d, #b30000);
   color: white;
-  box-shadow: 0 10px 30px rgba(255,0,0,0.4);
+  font-size: 18px;
+  font-weight: bold;
+  border: none;
+  margin-top: 20px;
 }
 
-#clickBtn.locked {
-  opacity: 0.4;
-  cursor: not-allowed;
+#clickBtn:active {
+  transform: scale(0.95);
 }
 
-/* pay */
 #payBtn {
   background: #222;
   color: white;
 }
 
-#counter {
-  font-size: 42px;
-  margin-top: 20px;
+.locked {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 </style>
 </head>
@@ -83,68 +78,74 @@ button {
 
 <div class="card">
 
-  <div class="lock" id="lock">🔒</div>
+  <h2 class="title">Click System</h2>
 
-  <h1>Click Challenge</h1>
-  <p id="text">Pay $1 = 1 click</p>
+  <div class="stats">
+    <div>Clicks: <span id="clicks">0</span></div>
+    <div>Credits: <span id="credits">0</span></div>
+  </div>
 
-  <button id="clickBtn" class="locked">LOCKED</button>
-  <button id="payBtn">Pay here ($1)</button>
-
-  <div id="counter">0</div>
+  <button id="clickBtn" class="locked">NO CREDITS</button>
+  <button id="payBtn">Buy 1 Credit ($1)</button>
 
 </div>
 
 <script>
 const API = "https://stripe-click-backend.onrender.com";
 
-let unlocked = false; // 🔥 não depende mais de estado bugado
-let used = false;
-
-const clickBtn = document.getElementById("clickBtn");
-const payBtn = document.getElementById("payBtn");
-const counter = document.getElementById("counter");
-const lock = document.getElementById("lock");
-const text = document.getElementById("text");
+let clicks = 0;
+let credits = 0;
 
 /* =========================
-   UI
+   LOAD STATUS
+========================= */
+async function loadStatus() {
+  const res = await fetch(API + "/status");
+  const data = await res.json();
+
+  clicks = data.clicks;
+  credits = data.credits;
+
+  render();
+}
+
+/* =========================
+   RENDER
 ========================= */
 function render() {
-  if (unlocked && !used) {
-    lock.style.display = "none";
-    text.innerText = "You have 1 click!";
-    clickBtn.innerText = "CLICK!";
-    clickBtn.classList.remove("locked");
-  } else if (used) {
-    lock.style.display = "block";
-    text.innerText = "Click used. Pay again.";
-    clickBtn.innerText = "USED";
-    clickBtn.classList.add("locked");
+  document.getElementById("clicks").innerText = clicks;
+  document.getElementById("credits").innerText = credits;
+
+  const btn = document.getElementById("clickBtn");
+
+  if (credits > 0) {
+    btn.innerText = "CLICK!";
+    btn.classList.remove("locked");
   } else {
-    lock.style.display = "block";
-    text.innerText = "Pay $1 = 1 click";
-    clickBtn.innerText = "LOCKED";
-    clickBtn.classList.add("locked");
+    btn.innerText = "NO CREDITS";
+    btn.classList.add("locked");
   }
 }
 
-render();
-
 /* =========================
-   COUNTER
+   CLICK
 ========================= */
-async function loadCounter() {
-  const res = await fetch(API + "/click-count");
+document.getElementById("clickBtn").onclick = async () => {
+  const res = await fetch(API + "/click", { method: "POST" });
   const data = await res.json();
-  counter.innerText = data.clicks;
-}
-loadCounter();
+
+  if (!data.ok) return;
+
+  clicks = data.clicks;
+  credits = data.credits;
+
+  render();
+};
 
 /* =========================
-   PAY
+   BUY CREDIT
 ========================= */
-payBtn.onclick = async () => {
+document.getElementById("payBtn").onclick = async () => {
   const res = await fetch(API + "/create-checkout-session", {
     method: "POST"
   });
@@ -154,47 +155,18 @@ payBtn.onclick = async () => {
 };
 
 /* =========================
-   CLICK (1x only)
-========================= */
-clickBtn.onclick = async () => {
-  if (!unlocked || used) return;
-
-  const res = await fetch(API + "/register-click", {
-    method: "POST"
-  });
-
-  const data = await res.json();
-  counter.innerText = data.clicks;
-
-  // 🔥 trava ciclo
-  used = true;
-  unlocked = false;
-
-  render();
-};
-
-/* =========================
-   CHECK PAYMENT (FIX DEFINITIVO)
+   CHECK PAYMENT
 ========================= */
 async function checkPayment() {
   const params = new URLSearchParams(window.location.search);
   const sessionId = params.get("session_id");
 
   if (sessionId) {
-    try {
-      const res = await fetch(`${API}/verify-session?session_id=${sessionId}`);
-      const data = await res.json();
-
-      if (data.paid) {
-        unlocked = true;
-        used = false; // 🔥 RESET DO CICLO AQUI
-      }
-    } catch (e) {}
-
+    await fetch(`${API}/verify-session?session_id=${sessionId}`);
     window.history.replaceState({}, document.title, "/");
   }
 
-  render();
+  loadStatus();
 }
 
 checkPayment();
