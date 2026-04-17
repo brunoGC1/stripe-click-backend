@@ -21,25 +21,21 @@ configure do
       id SERIAL PRIMARY KEY,
       count INTEGER NOT NULL DEFAULT 0
     );
+
+    CREATE TABLE IF NOT EXISTS credits (
+      id SERIAL PRIMARY KEY,
+      balance INTEGER NOT NULL DEFAULT 0
+    );
   SQL
 
-  result = db.exec("SELECT COUNT(*) FROM clicks")
-  if result[0]["count"].to_i == 0
+  # init rows
+  if db.exec("SELECT COUNT(*) FROM clicks")[0]["count"].to_i == 0
     db.exec("INSERT INTO clicks (count) VALUES (0)")
   end
-end
 
-# =========================
-# CORS
-# =========================
-before do
-  response.headers['Access-Control-Allow-Origin'] = '*'
-  response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-  response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-end
-
-options '*' do
-  200
+  if db.exec("SELECT COUNT(*) FROM credits")[0]["count"].to_i == 0
+    db.exec("INSERT INTO credits (balance) VALUES (0)")
+  end
 end
 
 # =========================
@@ -50,26 +46,43 @@ get '/' do
 end
 
 # =========================
-# CLICK COUNT
+# GET STATUS (credits + clicks)
 # =========================
-get '/click-count' do
+get '/status' do
   content_type :json
 
-  result = db.exec("SELECT count FROM clicks LIMIT 1")
-  { clicks: result[0]["count"].to_i }.to_json
+  clicks = db.exec("SELECT count FROM clicks LIMIT 1")[0]["count"].to_i
+  credits = db.exec("SELECT balance FROM credits LIMIT 1")[0]["balance"].to_i
+
+  { clicks: clicks, credits: credits }.to_json
 end
 
-post '/register-click' do
+# =========================
+# CLICK (server decides)
+# =========================
+post '/click' do
   content_type :json
 
+  credit = db.exec("SELECT balance FROM credits LIMIT 1")[0]["balance"].to_i
+
+  if credit <= 0
+    return { ok: false, error: "no credits" }.to_json
+  end
+
+  # consume credit
+  db.exec("UPDATE credits SET balance = balance - 1")
+
+  # add click
   db.exec("UPDATE clicks SET count = count + 1")
 
-  result = db.exec("SELECT count FROM clicks LIMIT 1")
-  { clicks: result[0]["count"].to_i }.to_json
+  clicks = db.exec("SELECT count FROM clicks LIMIT 1")[0]["count"].to_i
+  credits = db.exec("SELECT balance FROM credits LIMIT 1")[0]["balance"].to_i
+
+  { ok: true, clicks: clicks, credits: credits }.to_json
 end
 
 # =========================
-# STRIPE
+# STRIPE (BUY CREDIT)
 # =========================
 post '/create-checkout-session' do
   content_type :json
@@ -77,14 +90,13 @@ post '/create-checkout-session' do
   session = Stripe::Checkout::Session.create(
     mode: 'payment',
     payment_method_types: ['card'],
-    customer_creation: 'if_required',
 
     line_items: [{
       price_data: {
         currency: 'usd',
         unit_amount: 100,
         product_data: {
-          name: 'Unlock Click'
+          name: '1 Click Credit'
         }
       },
       quantity: 1
@@ -98,7 +110,7 @@ post '/create-checkout-session' do
 end
 
 # =========================
-# VERIFY
+# VERIFY + ADD CREDIT
 # =========================
 get '/verify-session' do
   content_type :json
@@ -107,7 +119,13 @@ get '/verify-session' do
 
   begin
     session = Stripe::Checkout::Session.retrieve(session_id)
-    { paid: session.payment_status == 'paid' }.to_json
+
+    if session.payment_status == 'paid'
+      db.exec("UPDATE credits SET balance = balance + 1")
+      return { paid: true }.to_json
+    end
+
+    { paid: false }.to_json
   rescue
     { paid: false }.to_json
   end
