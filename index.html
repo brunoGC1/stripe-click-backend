@@ -4,10 +4,6 @@
 <meta charset="UTF-8" />
 <title>Curiosity Button</title>
 
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-<meta http-equiv="Pragma" content="no-cache" />
-<meta http-equiv="Expires" content="0" />
-
 <style>
 body {
   margin: 0;
@@ -29,20 +25,18 @@ body {
   font-weight: bold;
 }
 
-.highlight {
-  color: #e53935;
-}
-
 .subtitle {
   font-size: 14px;
   color: #555;
   margin-top: 10px;
 }
 
-/* BASE */
+/* =========================
+   BASE 3D
+========================= */
 .base {
-  width: 280px;
-  height: 160px;
+  width: 260px;
+  height: 140px;
   margin: 40px auto;
   position: relative;
 
@@ -55,71 +49,40 @@ body {
     inset 0 -4px 10px rgba(0,0,0,0.8);
 }
 
-/* BOTÃO */
+/* =========================
+   BOTÃO
+========================= */
 .button-wrapper {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -45%);
+  transform: translate(-50%, -40%);
 }
 
-.push-button {
-  width: 140px;
-  height: 140px;
-  border-radius: 50%;
-  position: relative;
-
-  background: radial-gradient(circle, #ffd700, #b8860b);
-  box-shadow:
-    inset 0 4px 8px rgba(255,255,255,0.3),
-    0 10px 20px rgba(0,0,0,0.5);
-
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.push-button::before {
-  content: "";
-  position: absolute;
-  width: 115px;
-  height: 115px;
-  border-radius: 50%;
-
-  background: radial-gradient(circle, #ddd, #888);
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
-}
-
-.top {
-  position: absolute;
+.button {
   width: 100px;
   height: 100px;
+
+  background: radial-gradient(circle at 30% 30%, #ff6b6b, #c62828);
   border-radius: 50%;
 
-  background: radial-gradient(circle at 30% 30%, #ff3b3b, #b30000);
   box-shadow:
     0 10px 0 #7a0000,
     0 15px 20px rgba(0,0,0,0.5);
 
-  display: flex;
-  justify-content: center;
-  align-items: center;
-
-  color: white;
-  font-weight: bold;
-  font-size: 18px;
-
   transition: all 0.08s;
 }
 
-.top.pressed {
+.button.pressed {
   transform: translateY(12px);
   box-shadow:
     0 2px 0 #7a0000,
-    0 5px 10px rgba(0,0,0,0.4);
+    0 6px 10px rgba(0,0,0,0.4);
 }
 
-/* TAMPA */
+/* =========================
+   TAMPA
+========================= */
 .cover {
   position: absolute;
   top: 0;
@@ -150,7 +113,9 @@ body {
   pointer-events: none;
 }
 
-/* RESULT */
+/* =========================
+   RESULT
+========================= */
 #result {
   font-size: 22px;
   margin-top: 15px;
@@ -174,8 +139,7 @@ body {
 <div class="container">
 
   <div class="title">
-    Can strangers on the internet reach 
-    <span class="highlight">ONE MILLION</span> clicks?
+    Can strangers on the internet reach ONE MILLION clicks?
   </div>
 
   <div class="subtitle">
@@ -188,9 +152,7 @@ body {
     <div id="cover" class="cover closed"></div>
 
     <div class="button-wrapper">
-      <div id="clickBtn" class="push-button">
-        <div class="top">PUSH</div>
-      </div>
+      <div id="clickBtn" class="button"></div>
     </div>
   </div>
 
@@ -207,14 +169,13 @@ let clicks = 0;
 let credits = 0;
 
 const clickBtn = document.getElementById("clickBtn");
-const topBtn = clickBtn.querySelector(".top");
 const result = document.getElementById("result");
 const payBtn = document.getElementById("payBtn");
 const cover = document.getElementById("cover");
 
-const GOAL = 1000000;
-
-/* AUDIO */
+/* =========================
+   AUDIO
+========================= */
 let audioCtx;
 
 async function playSound(url) {
@@ -231,15 +192,13 @@ async function playSound(url) {
     source.buffer = audioBuffer;
     source.connect(audioCtx.destination);
     source.start(0);
-  } catch {}
+
+  } catch (e) {}
 }
 
-/* FORMAT */
-function formatNumber(num) {
-  return num.toLocaleString();
-}
-
-/* UI */
+/* =========================
+   UI
+========================= */
 function render() {
   if (credits > 0) {
     cover.className = "cover open";
@@ -248,7 +207,9 @@ function render() {
   }
 }
 
-/* STATUS */
+/* =========================
+   STATUS
+========================= */
 async function refreshStatus() {
   try {
     const res = await fetch(API + "/status");
@@ -261,7 +222,9 @@ async function refreshStatus() {
   } catch {}
 }
 
-/* CLICK */
+/* =========================
+   CLICK
+========================= */
 clickBtn.onclick = async () => {
 
   if (credits <= 0) {
@@ -269,8 +232,8 @@ clickBtn.onclick = async () => {
     return;
   }
 
-  topBtn.classList.add("pressed");
-  setTimeout(() => topBtn.classList.remove("pressed"), 100);
+  clickBtn.classList.add("pressed");
+  setTimeout(() => clickBtn.classList.remove("pressed"), 100);
 
   playSound("https://assets.mixkit.co/sfx/preview/mixkit-game-click-1114.mp3");
 
@@ -282,13 +245,15 @@ clickBtn.onclick = async () => {
     credits = data.credits ?? credits;
 
     result.style.display = "block";
-    result.innerText = formatNumber(clicks) + " / " + formatNumber(GOAL);
+    result.innerText = clicks + " curious people";
 
     render();
   } catch {}
 };
 
-/* STRIPE */
+/* =========================
+   STRIPE
+========================= */
 payBtn.onclick = async () => {
   try {
     const res = await fetch(API + "/create-checkout-session", {
@@ -306,13 +271,16 @@ payBtn.onclick = async () => {
   }
 };
 
-/* 🔥 FIX CORRETO (SUBPASTA) */
+/* =========================
+   RETURN (🔥 FIX AQUI)
+========================= */
 const params = new URLSearchParams(window.location.search);
 
 if (params.get("success") === "true") {
-  setTimeout(() => {
-    window.location.href = window.location.pathname + "?v=" + Date.now();
-  }, 500);
+  setTimeout(refreshStatus, 1000);
+
+  // 🔥 NÃO quebra mais o path
+  window.history.replaceState({}, document.title, window.location.pathname);
 }
 
 refreshStatus();
