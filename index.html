@@ -1,215 +1,243 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Click Game</title>
+<meta charset="UTF-8" />
+<title>Click Game</title>
 
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial;
-      background: #eef2f7;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
+<style>
+body {
+  margin: 0;
+  font-family: Arial;
+  background: linear-gradient(#eef2f7, #dde3ea);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
 
-    .container {
-      text-align: center;
-      background: white;
-      padding: 40px;
-      border-radius: 20px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-      width: 320px;
-    }
+/* CONTAINER */
+.container {
+  text-align: center;
+}
 
-    h1 {
-      margin-bottom: 10px;
-    }
+/* BASE 3D */
+.base {
+  width: 260px;
+  height: 140px;
+  background: linear-gradient(#1c1c1c, #000);
+  border-radius: 20px;
+  box-shadow:
+    0 20px 30px rgba(0,0,0,0.4),
+    inset 0 4px 8px rgba(255,255,255,0.05);
+  position: relative;
+  padding-top: 30px;
+}
 
-    #counter {
-      font-size: 42px;
-      margin: 20px 0;
-    }
+/* BOTÃO */
+.button-wrapper {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+}
 
-    .btn {
-      width: 170px;
-      height: 170px;
-      border-radius: 50%;
-      border: none;
-      font-size: 18px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: 0.15s;
-    }
+.button {
+  width: 120px;
+  height: 120px;
+  background: radial-gradient(circle at 30% 30%, #ff6b6b, #c62828);
+  border-radius: 50%;
+  box-shadow:
+    0 10px 0 #7a0000,
+    0 20px 20px rgba(0,0,0,0.5);
+  cursor: pointer;
+  transition: all 0.1s;
+}
 
-    .locked {
-      background: #2c2c2c;
-      color: white;
-    }
+.button.pressed {
+  transform: translateY(12px);
+  box-shadow:
+    0 2px 0 #7a0000,
+    0 5px 10px rgba(0,0,0,0.4);
+}
 
-    .unlocked {
-      background: #e53935;
-      color: white;
-      box-shadow: 0 10px 25px rgba(229,57,53,0.4);
-    }
+/* TAMPA ACRÍLICO */
+.cover {
+  position: absolute;
+  top: -80px;
+  left: 20px;
+  width: 220px;
+  height: 140px;
+  background: rgba(255,255,255,0.15);
+  border: 2px solid rgba(255,255,255,0.4);
+  border-radius: 8px;
+  backdrop-filter: blur(4px);
+  transform-origin: left bottom;
+  transition: transform 0.6s ease;
+}
 
-    .btn:active {
-      transform: scale(0.95);
-    }
+/* ABERTA */
+.cover.open {
+  transform: rotate(-70deg);
+}
 
-    .payBtn {
-      margin-top: 20px;
-      padding: 10px 18px;
-      background: #111;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-    }
+/* TEXTO */
+#counter {
+  font-size: 32px;
+  margin-bottom: 20px;
+}
 
-    .small {
-      margin-top: 10px;
-      font-size: 14px;
-      color: #666;
-    }
-  </style>
+.small {
+  margin-top: 15px;
+  color: #555;
+}
+
+.payBtn {
+  margin-top: 20px;
+  padding: 10px 18px;
+  background: #111;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+</style>
 </head>
 
 <body>
 
 <div class="container">
-  <h1>Click Game</h1>
 
+  <h2>Click Game</h2>
   <div id="counter">0</div>
 
-  <button id="clickBtn" class="btn locked">🔒 LOCKED</button>
+  <div class="base">
+    <div id="cover" class="cover"></div>
+
+    <div class="button-wrapper">
+      <div id="clickBtn" class="button"></div>
+    </div>
+  </div>
 
   <div class="small" id="creditsText">Credits: 0</div>
-
   <button id="payBtn" class="payBtn">Pay here</button>
+
 </div>
 
 <script>
 (() => {
 
-  // =========================
-  // SAFE INIT (EVITA PÁGINA BRANCA)
-  // =========================
-  const API = "https://stripe-click-backend.onrender.com";
+const API = "https://stripe-click-backend.onrender.com";
 
-  let clicks = 0;
-  let credits = 0;
+let clicks = 0;
+let credits = 0;
 
-  const clickBtn = document.getElementById("clickBtn");
-  const counter = document.getElementById("counter");
-  const creditsText = document.getElementById("creditsText");
-  const payBtn = document.getElementById("payBtn");
+const clickBtn = document.getElementById("clickBtn");
+const counter = document.getElementById("counter");
+const creditsText = document.getElementById("creditsText");
+const payBtn = document.getElementById("payBtn");
+const cover = document.getElementById("cover");
 
-  if (!clickBtn || !counter || !creditsText || !payBtn) {
-    console.error("DOM not ready");
+/* =========================
+   SONS
+========================= */
+const lockedSound = new Audio("https://www.soundjay.com/buttons/sounds/button-10.mp3");
+const clickSound = new Audio("https://www.soundjay.com/buttons/sounds/button-16.mp3");
+
+/* =========================
+   UI
+========================= */
+function render() {
+  counter.innerText = clicks;
+  creditsText.innerText = "Credits: " + credits;
+
+  if (credits > 0) {
+    cover.classList.add("open");
+  } else {
+    cover.classList.remove("open");
+  }
+}
+
+/* =========================
+   STATUS
+========================= */
+async function refreshStatus() {
+  try {
+    const res = await fetch(API + "/status");
+    const data = await res.json();
+
+    clicks = data.clicks ?? 0;
+    credits = data.credits ?? 0;
+
+    render();
+  } catch (e) {
+    console.log("status error", e);
+  }
+}
+
+/* =========================
+   CLICK
+========================= */
+clickBtn.onclick = async () => {
+
+  // animação sempre
+  clickBtn.classList.add("pressed");
+  setTimeout(() => clickBtn.classList.remove("pressed"), 120);
+
+  if (credits <= 0) {
+    lockedSound.currentTime = 0;
+    lockedSound.play();
     return;
   }
 
-  // =========================
-  // RENDER UI
-  // =========================
-  function render() {
-    counter.innerText = clicks;
-    creditsText.innerText = "Credits: " + credits;
+  clickSound.currentTime = 0;
+  clickSound.play();
 
-    if (credits > 0) {
-      clickBtn.className = "btn unlocked";
-      clickBtn.innerText = "CLICK";
+  try {
+    const res = await fetch(API + "/click", { method: "POST" });
+    const data = await res.json();
+
+    clicks = data.clicks ?? clicks;
+    credits = data.credits ?? credits;
+
+    render();
+  } catch (e) {
+    console.log("click error", e);
+  }
+};
+
+/* =========================
+   STRIPE
+========================= */
+payBtn.onclick = async () => {
+  try {
+    const res = await fetch(API + "/create-checkout-session", {
+      method: "POST"
+    });
+
+    const data = await res.json();
+
+    if (data.url) {
+      window.location.href = data.url;
     } else {
-      clickBtn.className = "btn locked";
-      clickBtn.innerText = "🔒 LOCKED";
+      alert("Stripe error");
     }
+
+  } catch (e) {
+    alert("Failed to connect to server");
   }
+};
 
-  // =========================
-  // STATUS SAFE
-  // =========================
-  async function refreshStatus() {
-    try {
-      const res = await fetch(API + "/status");
-      const data = await res.json();
+/* =========================
+   RETURN STRIPE
+========================= */
+const params = new URLSearchParams(window.location.search);
 
-      clicks = data.clicks ?? 0;
-      credits = data.credits ?? 0;
+if (params.get("success") === "true") {
+  setTimeout(refreshStatus, 800); // delay leve pra webhook chegar
+  window.history.replaceState({}, document.title, "/index.html");
+}
 
-      render();
-    } catch (e) {
-      console.log("status error", e);
-    }
-  }
-
-  // =========================
-  // CLICK SAFE
-  // =========================
-  clickBtn.onclick = async () => {
-    if (credits <= 0) return;
-
-    try {
-      const res = await fetch(API + "/click", { method: "POST" });
-      const data = await res.json();
-
-      clicks = data.clicks ?? clicks;
-      credits = data.credits ?? credits;
-
-      render();
-    } catch (e) {
-      console.log("click error", e);
-    }
-  };
-
-  // =========================
-  // PAY SAFE (STRIPE)
-  // =========================
-  payBtn.onclick = async () => {
-    try {
-      console.log("pay clicked");
-
-      const res = await fetch(API + "/create-checkout-session", {
-        method: "POST"
-      });
-
-      const text = await res.text();
-
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        console.log("invalid json:", text);
-        alert("Server error");
-        return;
-      }
-
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        alert("Stripe error: no url");
-      }
-
-    } catch (e) {
-      console.log("pay error", e);
-      alert("Failed to connect to server");
-    }
-  };
-
-  // =========================
-  // RETURN FROM STRIPE
-  // =========================
-  const params = new URLSearchParams(window.location.search);
-
-  if (params.get("success") === "true") {
-    refreshStatus();
-    window.history.replaceState({}, document.title, "/index.html");
-  }
-
-  // init
-  refreshStatus();
+refreshStatus();
 
 })();
 </script>
