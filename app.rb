@@ -27,23 +27,45 @@ def db
   @db ||= PG.connect(ENV['DATABASE_URL'])
 end
 
+# =========================
+# AUTO MIGRATION (🔥 AQUI ESTÁ A CORREÇÃO)
+# =========================
 configure do
   begin
+    # cria tabela se não existir
     db.exec <<-SQL
       CREATE TABLE IF NOT EXISTS clicks (
         id SERIAL PRIMARY KEY,
-        count INTEGER DEFAULT 0,
-        credits INTEGER DEFAULT 0
+        count INTEGER DEFAULT 0
       );
     SQL
 
+    # verifica se coluna credits existe
+    columns = db.exec <<-SQL
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name='clicks';
+    SQL
+
+    column_names = columns.map { |c| c["column_name"] }
+
+    # se não existir, adiciona
+    unless column_names.include?("credits")
+      puts "⚠️ Adding missing column: credits"
+      db.exec("ALTER TABLE clicks ADD COLUMN credits INTEGER DEFAULT 0;")
+    end
+
+    # garante pelo menos 1 linha
     result = db.exec("SELECT COUNT(*) FROM clicks")
 
     if result[0]["count"].to_i == 0
       db.exec("INSERT INTO clicks (count, credits) VALUES (0, 0)")
     end
+
+    puts "✅ DB READY"
+
   rescue => e
-    puts "DB INIT ERROR: #{e.message}"
+    puts "❌ DB INIT ERROR: #{e.message}"
   end
 end
 
@@ -138,7 +160,7 @@ post '/create-checkout-session' do
 end
 
 # =========================
-# STRIPE WEBHOOK (CORRIGIDO)
+# WEBHOOK
 # =========================
 post '/stripe-webhook' do
   payload = request.body.read
@@ -152,7 +174,7 @@ post '/stripe-webhook' do
       db.exec("UPDATE clicks SET credits = credits + 1")
       puts "💰 CREDIT ADDED"
     else
-      puts "ℹ️ EVENTO IGNORADO"
+      puts "ℹ️ Evento ignorado"
     end
 
   rescue => e
