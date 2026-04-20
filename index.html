@@ -21,7 +21,7 @@ body {
 }
 
 .title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: bold;
 }
 
@@ -37,7 +37,7 @@ body {
 .base {
   width: 260px;
   height: 140px;
-  margin: 40px auto;
+  margin: 60px auto 30px; /* MAIS ESPAÇO */
   position: relative;
 
   background: linear-gradient(145deg, #1a1a1a, #000);
@@ -50,39 +50,47 @@ body {
 }
 
 /* =========================
-   BOTÃO PREMIUM (CORRIGIDO)
+   BOTÃO CENTRAL
 ========================= */
 .button-wrapper {
   position: absolute;
-  top: 55%;
+  top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 150px;
-  height: 150px;
 }
 
 /* aro dourado */
 .button-ring {
-  width: 150px;
-  height: 150px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
+
   background: radial-gradient(circle at 30% 30%, #fff3a0, #d4a600 60%, #8a6d00);
+
   box-shadow:
     0 6px 10px rgba(0,0,0,0.5),
     inset 0 3px 6px rgba(255,255,255,0.4),
     inset 0 -6px 12px rgba(0,0,0,0.6);
+
   position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 /* aro prata */
 .button-inner-ring {
-  width: 125px;
-  height: 125px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
+
   background: radial-gradient(circle at 30% 30%, #eee, #999 60%, #555);
+
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: 0px;
+  left: 50%;
+  transform: translateX(-50%);
+
   box-shadow:
     inset 0 2px 4px rgba(255,255,255,0.5),
     inset 0 -4px 8px rgba(0,0,0,0.7);
@@ -90,18 +98,18 @@ body {
 
 /* botão vermelho */
 .button {
-  width: 110px;
-  height: 110px;
+  width: 85px;
+  height: 85px;
   border-radius: 50%;
+
   background: radial-gradient(circle at 30% 25%, #ff5a5a, #c40000 60%, #7a0000);
-  position: absolute;
-  top: 20px;
-  left: 20px;
+
+  position: relative;
   z-index: 2;
 
   box-shadow:
-    0 10px 0 #5a0000,
-    0 18px 25px rgba(0,0,0,0.6),
+    0 8px 0 #5a0000,
+    0 14px 20px rgba(0,0,0,0.6),
     inset 0 6px 10px rgba(255,255,255,0.35),
     inset 0 -8px 15px rgba(0,0,0,0.5);
 
@@ -115,15 +123,16 @@ body {
   left: 50%;
   transform: translate(-50%, -50%);
   font-weight: bold;
-  font-size: 20px;
+  font-size: 16px;
   color: #eee;
   text-shadow: 0 2px 4px rgba(0,0,0,0.6);
 }
 
+/* pressionar */
 .button.pressed {
-  transform: translateY(14px);
+  transform: translateY(10px);
   box-shadow:
-    0 3px 0 #5a0000,
+    0 2px 0 #5a0000,
     0 6px 10px rgba(0,0,0,0.4),
     inset 0 4px 8px rgba(0,0,0,0.6);
 }
@@ -135,8 +144,10 @@ body {
   position: absolute;
   top: 0;
   left: 0;
+
   width: 100%;
   height: 100%;
+
   border-radius: 18px;
 
   background: rgba(255,255,255,0.02);
@@ -146,6 +157,7 @@ body {
 
   transform-origin: left bottom;
   transition: transform 0.6s ease;
+
   z-index: 10;
 }
 
@@ -221,9 +233,7 @@ const result = document.getElementById("result");
 const payBtn = document.getElementById("payBtn");
 const cover = document.getElementById("cover");
 
-/* =========================
-   AUDIO
-========================= */
+/* AUDIO */
 let audioCtx;
 
 async function playSound(url) {
@@ -241,12 +251,10 @@ async function playSound(url) {
     source.connect(audioCtx.destination);
     source.start(0);
 
-  } catch (e) {}
+  } catch {}
 }
 
-/* =========================
-   UI
-========================= */
+/* UI */
 function render() {
   if (credits > 0) {
     cover.className = "cover open";
@@ -255,9 +263,7 @@ function render() {
   }
 }
 
-/* =========================
-   STATUS
-========================= */
+/* STATUS */
 async function refreshStatus() {
   try {
     const res = await fetch(API + "/status");
@@ -270,9 +276,7 @@ async function refreshStatus() {
   } catch {}
 }
 
-/* =========================
-   CLICK
-========================= */
+/* CLICK */
 clickBtn.onclick = async () => {
 
   if (credits <= 0) {
@@ -281,7 +285,7 @@ clickBtn.onclick = async () => {
   }
 
   clickBtn.classList.add("pressed");
-  setTimeout(() => clickBtn.classList.remove("pressed"), 120);
+  setTimeout(() => clickBtn.classList.remove("pressed"), 100);
 
   playSound("https://assets.mixkit.co/sfx/preview/mixkit-game-click-1114.mp3");
 
@@ -299,9 +303,7 @@ clickBtn.onclick = async () => {
   } catch {}
 };
 
-/* =========================
-   STRIPE
-========================= */
+/* STRIPE */
 payBtn.onclick = async () => {
   try {
     const res = await fetch(API + "/create-checkout-session", {
@@ -319,9 +321,7 @@ payBtn.onclick = async () => {
   }
 };
 
-/* =========================
-   RETURN
-========================= */
+/* RETURN */
 const params = new URLSearchParams(window.location.search);
 
 if (params.get("success") === "true") {
