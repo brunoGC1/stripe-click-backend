@@ -4,6 +4,11 @@
 <meta charset="UTF-8" />
 <title>Curiosity Button</title>
 
+<!-- 🔥 ANTI-CACHE -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+
 <style>
 body {
   margin: 0;
@@ -31,9 +36,7 @@ body {
   margin-top: 10px;
 }
 
-/* =========================
-   BASE 3D
-========================= */
+/* BASE */
 .base {
   width: 280px;
   height: 160px;
@@ -49,9 +52,7 @@ body {
     inset 0 -4px 10px rgba(0,0,0,0.8);
 }
 
-/* =========================
-   BOTÃO REALISTA
-========================= */
+/* BOTÃO REALISTA */
 .button-wrapper {
   position: absolute;
   top: 50%;
@@ -59,7 +60,6 @@ body {
   transform: translate(-50%, -45%);
 }
 
-/* base dourada */
 .push-button {
   width: 140px;
   height: 140px;
@@ -76,7 +76,6 @@ body {
   align-items: center;
 }
 
-/* aro metálico */
 .push-button::before {
   content: "";
   position: absolute;
@@ -88,7 +87,6 @@ body {
   box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
 }
 
-/* botão vermelho */
 .top {
   position: absolute;
   width: 100px;
@@ -118,9 +116,7 @@ body {
     0 5px 10px rgba(0,0,0,0.4);
 }
 
-/* =========================
-   TAMPA (ACRÍLICO)
-========================= */
+/* TAMPA */
 .cover {
   position: absolute;
   top: 0;
@@ -151,9 +147,7 @@ body {
   pointer-events: none;
 }
 
-/* =========================
-   RESULT
-========================= */
+/* RESULT */
 #result {
   font-size: 22px;
   margin-top: 15px;
@@ -214,9 +208,7 @@ const result = document.getElementById("result");
 const payBtn = document.getElementById("payBtn");
 const cover = document.getElementById("cover");
 
-/* =========================
-   AUDIO REAL (FUNCIONA)
-========================= */
+/* AUDIO */
 let audioCtx;
 
 async function playSound(url) {
@@ -237,9 +229,7 @@ async function playSound(url) {
   } catch {}
 }
 
-/* =========================
-   UI
-========================= */
+/* UI */
 function render() {
   if (credits > 0) {
     cover.className = "cover open";
@@ -248,9 +238,7 @@ function render() {
   }
 }
 
-/* =========================
-   STATUS
-========================= */
+/* STATUS */
 async function refreshStatus() {
   try {
     const res = await fetch(API + "/status");
@@ -263,9 +251,7 @@ async function refreshStatus() {
   } catch {}
 }
 
-/* =========================
-   CLICK
-========================= */
+/* CLICK */
 clickBtn.onclick = async () => {
 
   if (credits <= 0) {
@@ -292,9 +278,7 @@ clickBtn.onclick = async () => {
   } catch {}
 };
 
-/* =========================
-   STRIPE
-========================= */
+/* STRIPE */
 payBtn.onclick = async () => {
   try {
     const res = await fetch(API + "/create-checkout-session", {
@@ -312,14 +296,13 @@ payBtn.onclick = async () => {
   }
 };
 
-/* =========================
-   RETURN
-========================= */
+/* 🔥 FIX CACHE STRIPE */
 const params = new URLSearchParams(window.location.search);
 
 if (params.get("success") === "true") {
-  setTimeout(refreshStatus, 1000);
-  window.history.replaceState({}, document.title, "/index.html");
+  setTimeout(() => {
+    window.location.href = "/index.html?v=" + Date.now();
+  }, 500);
 }
 
 refreshStatus();
