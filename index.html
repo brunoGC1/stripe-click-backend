@@ -1,14 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Curiosity Button</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial;
+  background: linear-gradient(#eef2f7, #dde3ea);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.container {
+  text-align: center;
+  max-width: 420px;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #555;
+  margin-top: 10px;
+}
+
 /* =========================
-   BOTÃO PREMIUM
+   BASE 3D
+========================= */
+.base {
+  width: 260px;
+  height: 140px;
+  margin: 40px auto;
+  position: relative;
+
+  background: linear-gradient(145deg, #1a1a1a, #000);
+  border-radius: 18px;
+
+  box-shadow:
+    0 20px 40px rgba(0,0,0,0.5),
+    inset 0 3px 6px rgba(255,255,255,0.05),
+    inset 0 -4px 10px rgba(0,0,0,0.8);
+}
+
+/* =========================
+   BOTÃO PREMIUM (CORRIGIDO)
 ========================= */
 .button-wrapper {
   position: absolute;
   top: 55%;
   left: 50%;
   transform: translate(-50%, -50%);
+  width: 150px;
+  height: 150px;
 }
 
-/* aro dourado externo */
+/* aro dourado */
 .button-ring {
   width: 150px;
   height: 150px;
@@ -19,21 +72,17 @@
     inset 0 3px 6px rgba(255,255,255,0.4),
     inset 0 -6px 12px rgba(0,0,0,0.6);
   position: absolute;
-  top: -20px;
-  left: 50%;
-  transform: translateX(-50%);
 }
 
-/* aro prata interno */
+/* aro prata */
 .button-inner-ring {
   width: 125px;
   height: 125px;
   border-radius: 50%;
   background: radial-gradient(circle at 30% 30%, #eee, #999 60%, #555);
   position: absolute;
-  top: -7px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 12px;
+  left: 12px;
   box-shadow:
     inset 0 2px 4px rgba(255,255,255,0.5),
     inset 0 -4px 8px rgba(0,0,0,0.7);
@@ -44,10 +93,10 @@
   width: 110px;
   height: 110px;
   border-radius: 50%;
-
   background: radial-gradient(circle at 30% 25%, #ff5a5a, #c40000 60%, #7a0000);
-
-  position: relative;
+  position: absolute;
+  top: 20px;
+  left: 20px;
   z-index: 2;
 
   box-shadow:
@@ -71,7 +120,6 @@
   text-shadow: 0 2px 4px rgba(0,0,0,0.6);
 }
 
-/* efeito de apertar */
 .button.pressed {
   transform: translateY(14px);
   box-shadow:
@@ -79,3 +127,212 @@
     0 6px 10px rgba(0,0,0,0.4),
     inset 0 4px 8px rgba(0,0,0,0.6);
 }
+
+/* =========================
+   TAMPA
+========================= */
+.cover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 18px;
+
+  background: rgba(255,255,255,0.02);
+  border: 2px solid rgba(255,255,255,0.15);
+
+  backdrop-filter: blur(2px);
+
+  transform-origin: left bottom;
+  transition: transform 0.6s ease;
+  z-index: 10;
+}
+
+.cover.closed {
+  transform: rotate(0deg);
+  pointer-events: all;
+}
+
+.cover.open {
+  transform: rotate(-80deg);
+  pointer-events: none;
+}
+
+/* =========================
+   RESULT
+========================= */
+#result {
+  font-size: 22px;
+  margin-top: 15px;
+  display: none;
+}
+
+.payBtn {
+  margin-top: 20px;
+  padding: 10px 18px;
+  background: #111;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="title">
+    Can strangers on the internet reach ONE MILLION clicks?
+  </div>
+
+  <div class="subtitle">
+    Pay $1 to click, and find out how many already did.
+  </div>
+
+  <div id="result"></div>
+
+  <div class="base">
+    <div id="cover" class="cover closed"></div>
+
+    <div class="button-wrapper">
+      <div class="button-ring"></div>
+      <div class="button-inner-ring"></div>
+      <div id="clickBtn" class="button"></div>
+    </div>
+  </div>
+
+  <button id="payBtn" class="payBtn">Pay here</button>
+
+</div>
+
+<script>
+(() => {
+
+const API = "https://stripe-click-backend.onrender.com";
+
+let clicks = 0;
+let credits = 0;
+
+const clickBtn = document.getElementById("clickBtn");
+const result = document.getElementById("result");
+const payBtn = document.getElementById("payBtn");
+const cover = document.getElementById("cover");
+
+/* =========================
+   AUDIO
+========================= */
+let audioCtx;
+
+async function playSound(url) {
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    const res = await fetch(url);
+    const buffer = await res.arrayBuffer();
+    const audioBuffer = await audioCtx.decodeAudioData(buffer);
+
+    const source = audioCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(audioCtx.destination);
+    source.start(0);
+
+  } catch (e) {}
+}
+
+/* =========================
+   UI
+========================= */
+function render() {
+  if (credits > 0) {
+    cover.className = "cover open";
+  } else {
+    cover.className = "cover closed";
+  }
+}
+
+/* =========================
+   STATUS
+========================= */
+async function refreshStatus() {
+  try {
+    const res = await fetch(API + "/status");
+    const data = await res.json();
+
+    clicks = data.clicks ?? 0;
+    credits = data.credits ?? 0;
+
+    render();
+  } catch {}
+}
+
+/* =========================
+   CLICK
+========================= */
+clickBtn.onclick = async () => {
+
+  if (credits <= 0) {
+    playSound("https://assets.mixkit.co/sfx/preview/mixkit-metal-click-1104.mp3");
+    return;
+  }
+
+  clickBtn.classList.add("pressed");
+  setTimeout(() => clickBtn.classList.remove("pressed"), 120);
+
+  playSound("https://assets.mixkit.co/sfx/preview/mixkit-game-click-1114.mp3");
+
+  try {
+    const res = await fetch(API + "/click", { method: "POST" });
+    const data = await res.json();
+
+    clicks = data.clicks ?? clicks;
+    credits = data.credits ?? credits;
+
+    result.style.display = "block";
+    result.innerText = clicks + " curious people";
+
+    render();
+  } catch {}
+};
+
+/* =========================
+   STRIPE
+========================= */
+payBtn.onclick = async () => {
+  try {
+    const res = await fetch(API + "/create-checkout-session", {
+      method: "POST"
+    });
+
+    const data = await res.json();
+
+    if (data.url) {
+      window.location.href = data.url;
+    }
+
+  } catch {
+    alert("Failed to connect to server");
+  }
+};
+
+/* =========================
+   RETURN
+========================= */
+const params = new URLSearchParams(window.location.search);
+
+if (params.get("success") === "true") {
+  setTimeout(refreshStatus, 1000);
+  window.history.replaceState({}, document.title, "/index.html");
+}
+
+refreshStatus();
+
+})();
+</script>
+
+</body>
+</html>
