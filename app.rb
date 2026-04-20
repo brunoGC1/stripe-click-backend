@@ -4,7 +4,7 @@ require 'json'
 require 'pg'
 
 # =========================
-# CONFIG STRIPE (COM DEBUG)
+# CONFIG STRIPE
 # =========================
 if ENV['STRIPE_SECRET_KEY'].nil? || ENV['STRIPE_SECRET_KEY'].empty?
   puts "❌ STRIPE_SECRET_KEY NOT SET"
@@ -28,18 +28,22 @@ def db
 end
 
 configure do
-  db.exec <<-SQL
-    CREATE TABLE IF NOT EXISTS clicks (
-      id SERIAL PRIMARY KEY,
-      count INTEGER DEFAULT 0,
-      credits INTEGER DEFAULT 0
-    );
-  SQL
+  begin
+    db.exec <<-SQL
+      CREATE TABLE IF NOT EXISTS clicks (
+        id SERIAL PRIMARY KEY,
+        count INTEGER DEFAULT 0,
+        credits INTEGER DEFAULT 0
+      );
+    SQL
 
-  result = db.exec("SELECT COUNT(*) FROM clicks")
+    result = db.exec("SELECT COUNT(*) FROM clicks")
 
-  if result[0]["count"].to_i == 0
-    db.exec("INSERT INTO clicks (count, credits) VALUES (0, 0)")
+    if result[0]["count"].to_i == 0
+      db.exec("INSERT INTO clicks (count, credits) VALUES (0, 0)")
+    end
+  rescue => e
+    puts "DB INIT ERROR: #{e.message}"
   end
 end
 
@@ -95,7 +99,7 @@ post '/click' do
 end
 
 # =========================
-# STRIPE CHECKOUT (BLINDADO)
+# STRIPE CHECKOUT
 # =========================
 post '/create-checkout-session' do
   content_type :json
@@ -108,7 +112,9 @@ post '/create-checkout-session' do
         price_data: {
           currency: 'usd',
           unit_amount: 100,
-          product_data: { name: '1 Click Credit' }
+          product_data: {
+            name: '1 Click Credit'
+          }
         },
         quantity: 1
       }],
@@ -147,5 +153,3 @@ post '/stripe-webhook' do
 
   status 200
 end
-
-run! if __FILE__ == $0
