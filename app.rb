@@ -3,14 +3,22 @@ require 'stripe'
 require 'json'
 require 'pg'
 
+# =========================
+# CONFIG STRIPE (COM DEBUG)
+# =========================
+if ENV['STRIPE_SECRET_KEY'].nil? || ENV['STRIPE_SECRET_KEY'].empty?
+  puts "❌ STRIPE_SECRET_KEY NOT SET"
+else
+  puts "✅ STRIPE KEY LOADED"
+end
+
 Stripe.api_key = ENV['STRIPE_SECRET_KEY']
 
 # =========================
-# SINATRA CONFIG (IMPORTANTE PRO RENDER)
+# SINATRA CONFIG
 # =========================
 set :bind, '0.0.0.0'
 set :port, ENV.fetch('PORT', 3000)
-set :environment, :production
 
 # =========================
 # DATABASE
@@ -20,22 +28,18 @@ def db
 end
 
 configure do
-  begin
-    db.exec <<-SQL
-      CREATE TABLE IF NOT EXISTS clicks (
-        id SERIAL PRIMARY KEY,
-        count INTEGER NOT NULL DEFAULT 0,
-        credits INTEGER NOT NULL DEFAULT 0
-      );
-    SQL
+  db.exec <<-SQL
+    CREATE TABLE IF NOT EXISTS clicks (
+      id SERIAL PRIMARY KEY,
+      count INTEGER DEFAULT 0,
+      credits INTEGER DEFAULT 0
+    );
+  SQL
 
-    result = db.exec("SELECT COUNT(*) FROM clicks")
+  result = db.exec("SELECT COUNT(*) FROM clicks")
 
-    if result[0]["count"].to_i == 0
-      db.exec("INSERT INTO clicks (count, credits) VALUES (0, 0)")
-    end
-  rescue => e
-    puts "DB INIT ERROR: #{e.message}"
+  if result[0]["count"].to_i == 0
+    db.exec("INSERT INTO clicks (count, credits) VALUES (0, 0)")
   end
 end
 
@@ -75,7 +79,9 @@ post '/click' do
   row = db.exec("SELECT * FROM clicks LIMIT 1")[0]
   credits = row["credits"].to_i
 
-  return { ok: false, clicks: row["count"].to_i, credits: credits }.to_json if credits <= 0
+  if credits <= 0
+    return { ok: false, clicks: row["count"].to_i, credits: credits }.to_json
+  end
 
   db.exec("UPDATE clicks SET count = count + 1, credits = credits - 1")
 
@@ -89,7 +95,7 @@ post '/click' do
 end
 
 # =========================
-# STRIPE CHECKOUT (ESSA ERA A QUE ESTAVA DANDO NOT FOUND)
+# STRIPE CHECKOUT (BLINDADO)
 # =========================
 post '/create-checkout-session' do
   content_type :json
@@ -98,33 +104,31 @@ post '/create-checkout-session' do
     session = Stripe::Checkout::Session.create(
       mode: 'payment',
       payment_method_types: ['card'],
-
       line_items: [{
         price_data: {
           currency: 'usd',
           unit_amount: 100,
-          product_data: {
-            name: '1 Click Credit'
-          }
+          product_data: { name: '1 Click Credit' }
         },
         quantity: 1
       }],
-
-      success_url: 'https://stripe-click-backend.onrender.com/index.html?success=true',
-      cancel_url: 'https://stripe-click-backend.onrender.com/index.html'
+      success_url: 'https://brunogc1.github.io/stripe-click-backend/index.html?success=true',
+      cancel_url: 'https://brunogc1.github.io/stripe-click-backend/index.html'
     )
+
+    puts "✅ STRIPE SESSION CREATED"
 
     { url: session.url }.to_json
 
   rescue => e
-    puts "STRIPE ERROR: #{e.message}"
+    puts "❌ STRIPE ERROR: #{e.message}"
     status 500
-    { error: "stripe error" }.to_json
+    { error: e.message }.to_json
   end
 end
 
 # =========================
-# WEBHOOK (SEGURO)
+# WEBHOOK
 # =========================
 post '/stripe-webhook' do
   payload = request.body.read
@@ -144,7 +148,4 @@ post '/stripe-webhook' do
   status 200
 end
 
-# =========================
-# START (IMPORTANTE NO RENDER)
-# =========================
 run! if __FILE__ == $0
