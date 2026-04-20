@@ -234,7 +234,7 @@ async function playSound(url) {
   } catch {}
 }
 
-/* FORMAT NUMBER */
+/* FORMAT */
 function formatNumber(num) {
   return num.toLocaleString();
 }
@@ -306,12 +306,12 @@ payBtn.onclick = async () => {
   }
 };
 
-/* RETURN FIX */
+/* 🔥 FIX CORRETO (SUBPASTA) */
 const params = new URLSearchParams(window.location.search);
 
 if (params.get("success") === "true") {
   setTimeout(() => {
-    window.location.href = "/index.html?v=" + Date.now();
+    window.location.href = window.location.pathname + "?v=" + Date.now();
   }, 500);
 }
 
