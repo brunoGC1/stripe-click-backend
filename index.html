@@ -20,7 +20,6 @@ body {
   max-width: 420px;
 }
 
-/* TEXTO */
 .title {
   font-size: 20px;
   font-weight: bold;
@@ -79,7 +78,7 @@ body {
   width: 100%;
   height: 140px;
 
-  background: rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.05);
   border: 2px solid rgba(255,255,255,0.2);
   backdrop-filter: blur(8px);
 
@@ -90,7 +89,6 @@ body {
   z-index: 10;
 }
 
-/* estados */
 .cover.closed {
   transform: rotate(0deg);
   pointer-events: all;
@@ -101,13 +99,14 @@ body {
   pointer-events: none;
 }
 
-/* UI */
-#counter {
-  font-size: 28px;
-  margin-top: 10px;
+/* TEXTO */
+#result {
+  font-size: 22px;
+  margin-top: 15px;
+  display: none;
 }
 
-.small {
+.payText {
   margin-top: 10px;
   color: #555;
 }
@@ -133,10 +132,10 @@ body {
   </div>
 
   <div class="subtitle">
-    Click and find out how many curious people did the same.
+    Pay $1 to click, and find out how many already did.
   </div>
 
-  <div id="counter">0</div>
+  <div id="result"></div>
 
   <div class="base">
     <div id="cover" class="cover closed"></div>
@@ -145,12 +144,6 @@ body {
       <div id="clickBtn" class="button"></div>
     </div>
   </div>
-
-  <div class="small">
-    To click the button, pay $1
-  </div>
-
-  <div class="small" id="creditsText">Credits: 0</div>
 
   <button id="payBtn" class="payBtn">Pay here</button>
 
@@ -165,36 +158,39 @@ let clicks = 0;
 let credits = 0;
 
 const clickBtn = document.getElementById("clickBtn");
-const counter = document.getElementById("counter");
-const creditsText = document.getElementById("creditsText");
+const result = document.getElementById("result");
 const payBtn = document.getElementById("payBtn");
 const cover = document.getElementById("cover");
 
 /* =========================
-   AUDIO FIX REAL
+   AUDIO (VERSÃO QUE FUNCIONA)
 ========================= */
-let audioUnlocked = false;
+let audioCtx = null;
 
-const lockedSound = new Audio("https://assets.mixkit.co/sfx/preview/mixkit-metal-click-1104.mp3");
-const clickSound = new Audio("https://assets.mixkit.co/sfx/preview/mixkit-game-click-1114.mp3");
+async function playSound(url) {
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
 
-function unlockAudio() {
-  if (audioUnlocked) return;
+    const res = await fetch(url);
+    const arrayBuffer = await res.arrayBuffer();
+    const buffer = await audioCtx.decodeAudioData(arrayBuffer);
 
-  lockedSound.play().then(() => {
-    lockedSound.pause();
-    lockedSound.currentTime = 0;
-    audioUnlocked = true;
-  }).catch(()=>{});
+    const source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioCtx.destination);
+    source.start(0);
+
+  } catch (e) {
+    console.log("audio error", e);
+  }
 }
 
 /* =========================
    UI
 ========================= */
 function render() {
-  counter.innerText = clicks;
-  creditsText.innerText = "Credits: " + credits;
-
   if (credits > 0) {
     cover.className = "cover open";
   } else {
@@ -214,9 +210,7 @@ async function refreshStatus() {
     credits = data.credits ?? 0;
 
     render();
-  } catch (e) {
-    console.log("status error", e);
-  }
+  } catch (e) {}
 }
 
 /* =========================
@@ -224,19 +218,15 @@ async function refreshStatus() {
 ========================= */
 clickBtn.onclick = async () => {
 
-  unlockAudio();
-
   if (credits <= 0) {
-    lockedSound.currentTime = 0;
-    lockedSound.play().catch(()=>{});
+    playSound("https://assets.mixkit.co/sfx/preview/mixkit-metal-click-1104.mp3");
     return;
   }
 
   clickBtn.classList.add("pressed");
   setTimeout(() => clickBtn.classList.remove("pressed"), 100);
 
-  clickSound.currentTime = 0;
-  clickSound.play().catch(()=>{});
+  playSound("https://assets.mixkit.co/sfx/preview/mixkit-game-click-1114.mp3");
 
   try {
     const res = await fetch(API + "/click", { method: "POST" });
@@ -245,10 +235,11 @@ clickBtn.onclick = async () => {
     clicks = data.clicks ?? clicks;
     credits = data.credits ?? credits;
 
+    result.style.display = "block";
+    result.innerText = clicks + " curious people";
+
     render();
-  } catch (e) {
-    console.log("click error", e);
-  }
+  } catch (e) {}
 };
 
 /* =========================
@@ -264,8 +255,6 @@ payBtn.onclick = async () => {
 
     if (data.url) {
       window.location.href = data.url;
-    } else {
-      alert("Stripe error");
     }
 
   } catch (e) {
