@@ -50,7 +50,7 @@ body {
 }
 
 /* =========================
-   BOTÃO
+   BOTÃO (AGORA DENTRO)
 ========================= */
 .button-wrapper {
   position: absolute;
@@ -81,7 +81,7 @@ body {
 }
 
 /* =========================
-   TAMPA
+   TAMPA (QUASE INVISÍVEL)
 ========================= */
 .cover {
   position: absolute;
@@ -139,7 +139,7 @@ body {
 <div class="container">
 
   <div class="title">
-    Can strangers on the internet reach ONE MILLION clicks?
+    Did curiosity kill the cat?
   </div>
 
   <div class="subtitle">
@@ -174,7 +174,7 @@ const payBtn = document.getElementById("payBtn");
 const cover = document.getElementById("cover");
 
 /* =========================
-   AUDIO
+   AUDIO (FUNCIONANDO)
 ========================= */
 let audioCtx;
 
@@ -272,15 +272,13 @@ payBtn.onclick = async () => {
 };
 
 /* =========================
-   RETURN (🔥 FIX AQUI)
+   RETURN
 ========================= */
 const params = new URLSearchParams(window.location.search);
 
 if (params.get("success") === "true") {
   setTimeout(refreshStatus, 1000);
-
-  // 🔥 NÃO quebra mais o path
-  window.history.replaceState({}, document.title, window.location.pathname);
+  window.history.replaceState({}, document.title, "/index.html");
 }
 
 refreshStatus();
