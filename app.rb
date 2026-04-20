@@ -84,7 +84,11 @@ post '/click' do
   credits = row["credits"].to_i
 
   if credits <= 0
-    return { ok: false, clicks: row["count"].to_i, credits: credits }.to_json
+    return {
+      ok: false,
+      clicks: row["count"].to_i,
+      credits: credits
+    }.to_json
   end
 
   db.exec("UPDATE clicks SET count = count + 1, credits = credits - 1")
@@ -134,7 +138,7 @@ post '/create-checkout-session' do
 end
 
 # =========================
-# WEBHOOK
+# STRIPE WEBHOOK (CORRIGIDO)
 # =========================
 post '/stripe-webhook' do
   payload = request.body.read
@@ -142,13 +146,17 @@ post '/stripe-webhook' do
   begin
     event = JSON.parse(payload)
 
+    puts "🔥 WEBHOOK RECEBIDO: #{event['type']}"
+
     if event['type'] == 'checkout.session.completed'
       db.exec("UPDATE clicks SET credits = credits + 1")
       puts "💰 CREDIT ADDED"
+    else
+      puts "ℹ️ EVENTO IGNORADO"
     end
 
   rescue => e
-    puts "WEBHOOK ERROR: #{e.message}"
+    puts "❌ WEBHOOK ERROR: #{e.message}"
   end
 
   status 200
