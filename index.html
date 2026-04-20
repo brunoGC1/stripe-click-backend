@@ -4,7 +4,6 @@
 <meta charset="UTF-8" />
 <title>Curiosity Button</title>
 
-<!-- 🔥 ANTI-CACHE -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
@@ -30,6 +29,10 @@ body {
   font-weight: bold;
 }
 
+.highlight {
+  color: #e53935;
+}
+
 .subtitle {
   font-size: 14px;
   color: #555;
@@ -52,7 +55,7 @@ body {
     inset 0 -4px 10px rgba(0,0,0,0.8);
 }
 
-/* BOTÃO REALISTA */
+/* BOTÃO */
 .button-wrapper {
   position: absolute;
   top: 50%;
@@ -171,7 +174,8 @@ body {
 <div class="container">
 
   <div class="title">
-    Did curiosity kill the cat?
+    Can strangers on the internet reach 
+    <span class="highlight">ONE MILLION</span> clicks?
   </div>
 
   <div class="subtitle">
@@ -208,6 +212,8 @@ const result = document.getElementById("result");
 const payBtn = document.getElementById("payBtn");
 const cover = document.getElementById("cover");
 
+const GOAL = 1000000;
+
 /* AUDIO */
 let audioCtx;
 
@@ -225,8 +231,12 @@ async function playSound(url) {
     source.buffer = audioBuffer;
     source.connect(audioCtx.destination);
     source.start(0);
-
   } catch {}
+}
+
+/* FORMAT NUMBER */
+function formatNumber(num) {
+  return num.toLocaleString();
 }
 
 /* UI */
@@ -272,7 +282,7 @@ clickBtn.onclick = async () => {
     credits = data.credits ?? credits;
 
     result.style.display = "block";
-    result.innerText = clicks + " curious people";
+    result.innerText = formatNumber(clicks) + " / " + formatNumber(GOAL);
 
     render();
   } catch {}
@@ -296,7 +306,7 @@ payBtn.onclick = async () => {
   }
 };
 
-/* 🔥 FIX CACHE STRIPE */
+/* RETURN FIX */
 const params = new URLSearchParams(window.location.search);
 
 if (params.get("success") === "true") {
