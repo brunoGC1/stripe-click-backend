@@ -1,56 +1,5 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<title>Curiosity Button</title>
-
-<style>
-body {
-  margin: 0;
-  font-family: Arial;
-  background: linear-gradient(#eef2f7, #dde3ea);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-}
-
-.container {
-  text-align: center;
-  max-width: 420px;
-}
-
-.title {
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.subtitle {
-  font-size: 14px;
-  color: #555;
-  margin-top: 10px;
-}
-
 /* =========================
-   BASE 3D
-========================= */
-.base {
-  width: 260px;
-  height: 150px;
-  margin: 40px auto;
-  position: relative;
-
-  background: linear-gradient(145deg, #1a1a1a, #000);
-  border-radius: 18px;
-
-  box-shadow:
-    0 20px 40px rgba(0,0,0,0.5),
-    inset 0 3px 6px rgba(255,255,255,0.05),
-    inset 0 -4px 10px rgba(0,0,0,0.8);
-}
-
-/* =========================
-   BOTÃO NOVO (COM BASE)
+   BOTÃO PREMIUM
 ========================= */
 .button-wrapper {
   position: absolute;
@@ -59,251 +8,74 @@ body {
   transform: translate(-50%, -50%);
 }
 
-/* base metálica */
-.button-base {
-  width: 130px;
-  height: 40px;
-  background: linear-gradient(#999, #555);
+/* aro dourado externo */
+.button-ring {
+  width: 150px;
+  height: 150px;
   border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #fff3a0, #d4a600 60%, #8a6d00);
+  box-shadow:
+    0 6px 10px rgba(0,0,0,0.5),
+    inset 0 3px 6px rgba(255,255,255,0.4),
+    inset 0 -6px 12px rgba(0,0,0,0.6);
   position: absolute;
-  bottom: -10px;
+  top: -20px;
   left: 50%;
   transform: translateX(-50%);
-  box-shadow: inset 0 4px 6px rgba(0,0,0,0.5);
 }
 
-/* botão principal */
+/* aro prata interno */
+.button-inner-ring {
+  width: 125px;
+  height: 125px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #eee, #999 60%, #555);
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  box-shadow:
+    inset 0 2px 4px rgba(255,255,255,0.5),
+    inset 0 -4px 8px rgba(0,0,0,0.7);
+}
+
+/* botão vermelho */
 .button {
   width: 110px;
   height: 110px;
-
-  background: radial-gradient(circle at 30% 30%, #ff6b6b, #b71c1c);
   border-radius: 50%;
+
+  background: radial-gradient(circle at 30% 25%, #ff5a5a, #c40000 60%, #7a0000);
 
   position: relative;
   z-index: 2;
 
   box-shadow:
-    0 14px 0 #7a0000,
+    0 10px 0 #5a0000,
     0 18px 25px rgba(0,0,0,0.6),
-    inset 0 4px 6px rgba(255,255,255,0.3);
+    inset 0 6px 10px rgba(255,255,255,0.35),
+    inset 0 -8px 15px rgba(0,0,0,0.5);
 
   transition: all 0.08s;
 }
 
+.button::after {
+  content: "PUSH";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-weight: bold;
+  font-size: 20px;
+  color: #eee;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+}
+
+/* efeito de apertar */
 .button.pressed {
   transform: translateY(14px);
   box-shadow:
-    0 3px 0 #7a0000,
-    0 6px 10px rgba(0,0,0,0.4);
+    0 3px 0 #5a0000,
+    0 6px 10px rgba(0,0,0,0.4),
+    inset 0 4px 8px rgba(0,0,0,0.6);
 }
-
-/* =========================
-   TAMPA
-========================= */
-.cover {
-  position: absolute;
-  top: 0;
-  left: 0;
-
-  width: 100%;
-  height: 100%;
-
-  border-radius: 18px;
-
-  background: rgba(255,255,255,0.01);
-  border: 2px solid rgba(255,255,255,0.2);
-
-  backdrop-filter: blur(2px);
-
-  transform-origin: left bottom;
-  transition: transform 0.6s ease;
-  z-index: 10;
-}
-
-.cover.closed {
-  transform: rotate(0deg);
-  pointer-events: all;
-}
-
-.cover.open {
-  transform: rotate(-80deg);
-  pointer-events: none;
-}
-
-/* =========================
-   RESULT
-========================= */
-#result {
-  font-size: 22px;
-  margin-top: 15px;
-  display: none;
-}
-
-.payBtn {
-  margin-top: 20px;
-  padding: 10px 18px;
-  background: #111;
-  color: white;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-}
-</style>
-</head>
-
-<body>
-
-<div class="container">
-
-  <div class="title">
-    Can strangers on the internet reach ONE MILLION clicks?
-  </div>
-
-  <div class="subtitle">
-    Pay $1 to click, and find out how many already did.
-  </div>
-
-  <div id="result"></div>
-
-  <div class="base">
-    <div id="cover" class="cover closed"></div>
-
-    <div class="button-wrapper">
-      <div id="clickBtn" class="button"></div>
-      <div class="button-base"></div>
-    </div>
-  </div>
-
-  <button id="payBtn" class="payBtn">Pay here</button>
-
-</div>
-
-<script>
-(() => {
-
-const API = "https://stripe-click-backend.onrender.com";
-
-let clicks = 0;
-let credits = 0;
-
-const clickBtn = document.getElementById("clickBtn");
-const result = document.getElementById("result");
-const payBtn = document.getElementById("payBtn");
-const cover = document.getElementById("cover");
-
-/* =========================
-   AUDIO
-========================= */
-let audioCtx;
-
-async function playSound(url) {
-  try {
-    if (!audioCtx) {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-
-    const res = await fetch(url);
-    const buffer = await res.arrayBuffer();
-    const audioBuffer = await audioCtx.decodeAudioData(buffer);
-
-    const source = audioCtx.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(audioCtx.destination);
-    source.start(0);
-
-  } catch {}
-}
-
-/* =========================
-   UI
-========================= */
-function render() {
-  if (credits > 0) {
-    cover.className = "cover open";
-  } else {
-    cover.className = "cover closed";
-  }
-}
-
-/* =========================
-   STATUS
-========================= */
-async function refreshStatus() {
-  try {
-    const res = await fetch(API + "/status");
-    const data = await res.json();
-
-    clicks = data.clicks ?? 0;
-    credits = data.credits ?? 0;
-
-    render();
-  } catch {}
-}
-
-/* =========================
-   CLICK
-========================= */
-clickBtn.onclick = async () => {
-
-  if (credits <= 0) {
-    playSound("https://assets.mixkit.co/sfx/preview/mixkit-metal-click-1104.mp3");
-    return;
-  }
-
-  clickBtn.classList.add("pressed");
-  setTimeout(() => clickBtn.classList.remove("pressed"), 120);
-
-  playSound("https://assets.mixkit.co/sfx/preview/mixkit-game-click-1114.mp3");
-
-  try {
-    const res = await fetch(API + "/click", { method: "POST" });
-    const data = await res.json();
-
-    clicks = data.clicks ?? clicks;
-    credits = data.credits ?? credits;
-
-    result.style.display = "block";
-    result.innerText = clicks + " curious people";
-
-    render();
-  } catch {}
-};
-
-/* =========================
-   STRIPE
-========================= */
-payBtn.onclick = async () => {
-  try {
-    const res = await fetch(API + "/create-checkout-session", {
-      method: "POST"
-    });
-
-    const data = await res.json();
-
-    if (data.url) {
-      window.location.href = data.url;
-    }
-
-  } catch {
-    alert("Failed to connect to server");
-  }
-};
-
-/* =========================
-   RETURN
-========================= */
-const params = new URLSearchParams(window.location.search);
-
-if (params.get("success") === "true") {
-  setTimeout(refreshStatus, 1000);
-  window.history.replaceState({}, document.title, "/index.html");
-}
-
-refreshStatus();
-
-})();
-</script>
-
-</body>
-</html>
