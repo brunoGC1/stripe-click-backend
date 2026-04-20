@@ -15,28 +15,27 @@ body {
   height: 100vh;
 }
 
-/* CONTAINER */
 .container {
   text-align: center;
 }
 
-/* BASE 3D */
+/* BASE */
 .base {
   width: 260px;
-  height: 140px;
+  height: 160px;
   background: linear-gradient(#1c1c1c, #000);
   border-radius: 20px;
   box-shadow:
     0 20px 30px rgba(0,0,0,0.4),
     inset 0 4px 8px rgba(255,255,255,0.05);
   position: relative;
-  padding-top: 30px;
+  margin: 30px auto;
 }
 
 /* BOTÃO */
 .button-wrapper {
   position: absolute;
-  top: 10px;
+  bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
 }
@@ -47,47 +46,59 @@ body {
   background: radial-gradient(circle at 30% 30%, #ff6b6b, #c62828);
   border-radius: 50%;
   box-shadow:
-    0 10px 0 #7a0000,
+    0 12px 0 #7a0000,
     0 20px 20px rgba(0,0,0,0.5);
-  cursor: pointer;
-  transition: all 0.1s;
+  transition: all 0.08s;
 }
 
+/* APERTO */
 .button.pressed {
-  transform: translateY(12px);
+  transform: translateY(14px);
   box-shadow:
     0 2px 0 #7a0000,
     0 5px 10px rgba(0,0,0,0.4);
 }
 
-/* TAMPA ACRÍLICO */
+/* TAMPA */
 .cover {
   position: absolute;
-  top: -80px;
-  left: 20px;
-  width: 220px;
+  bottom: 0;
+  left: 0;
+  width: 100%;
   height: 140px;
-  background: rgba(255,255,255,0.15);
-  border: 2px solid rgba(255,255,255,0.4);
-  border-radius: 8px;
-  backdrop-filter: blur(4px);
+
+  background: rgba(255,255,255,0.08);
+  border: 2px solid rgba(255,255,255,0.25);
+  backdrop-filter: blur(6px);
+
+  border-radius: 10px;
+
   transform-origin: left bottom;
   transition: transform 0.6s ease;
+  z-index: 10;
 }
 
 /* ABERTA */
 .cover.open {
-  transform: rotate(-70deg);
+  transform: rotate(-75deg);
 }
 
-/* TEXTO */
+/* BLOQUEIO DE CLIQUE */
+.cover.closed {
+  pointer-events: all;
+}
+
+.cover.open {
+  pointer-events: none;
+}
+
+/* TEXTOS */
 #counter {
   font-size: 32px;
-  margin-bottom: 20px;
 }
 
 .small {
-  margin-top: 15px;
+  margin-top: 10px;
   color: #555;
 }
 
@@ -111,7 +122,7 @@ body {
   <div id="counter">0</div>
 
   <div class="base">
-    <div id="cover" class="cover"></div>
+    <div id="cover" class="cover closed"></div>
 
     <div class="button-wrapper">
       <div id="clickBtn" class="button"></div>
@@ -138,10 +149,13 @@ const payBtn = document.getElementById("payBtn");
 const cover = document.getElementById("cover");
 
 /* =========================
-   SONS
+   SONS (CORRIGIDO)
 ========================= */
-const lockedSound = new Audio("https://www.soundjay.com/buttons/sounds/button-10.mp3");
-const clickSound = new Audio("https://www.soundjay.com/buttons/sounds/button-16.mp3");
+const lockedSound = new Audio();
+lockedSound.src = "https://assets.mixkit.co/sfx/preview/mixkit-metal-click-1104.mp3";
+
+const clickSound = new Audio();
+clickSound.src = "https://assets.mixkit.co/sfx/preview/mixkit-game-click-1114.mp3";
 
 /* =========================
    UI
@@ -152,8 +166,10 @@ function render() {
 
   if (credits > 0) {
     cover.classList.add("open");
+    cover.classList.remove("closed");
   } else {
     cover.classList.remove("open");
+    cover.classList.add("closed");
   }
 }
 
@@ -179,18 +195,19 @@ async function refreshStatus() {
 ========================= */
 clickBtn.onclick = async () => {
 
-  // animação sempre
-  clickBtn.classList.add("pressed");
-  setTimeout(() => clickBtn.classList.remove("pressed"), 120);
-
+  // se travado, nem tenta clicar
   if (credits <= 0) {
     lockedSound.currentTime = 0;
-    lockedSound.play();
+    lockedSound.play().catch(()=>{});
     return;
   }
 
+  // animação
+  clickBtn.classList.add("pressed");
+  setTimeout(() => clickBtn.classList.remove("pressed"), 100);
+
   clickSound.currentTime = 0;
-  clickSound.play();
+  clickSound.play().catch(()=>{});
 
   try {
     const res = await fetch(API + "/click", { method: "POST" });
@@ -233,7 +250,7 @@ payBtn.onclick = async () => {
 const params = new URLSearchParams(window.location.search);
 
 if (params.get("success") === "true") {
-  setTimeout(refreshStatus, 800); // delay leve pra webhook chegar
+  setTimeout(refreshStatus, 1000);
   window.history.replaceState({}, document.title, "/index.html");
 }
 
